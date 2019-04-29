@@ -16,8 +16,8 @@ pygmentsCodefencesGuessSyntax = true
 
 hasCJKLanguage = true     # has chinese/japanese/korean ? # 自动检测是否包含 中文\日文\韩文
 paginate = 5                                              # 首页每页显示的文章数
-disqusShortname = "https-peterloleungyau-github-io.disqus.com"      # disqus_shortname
-googleAnalytics = ""      # UA-XXXXXXXX-X
+disqusShortname = "https-peterloleungyau-github-io"      # disqus_shortname
+googleAnalytics = "UA-139262854-1"      # UA-XXXXXXXX-X
 copyright = ""            # default: author.name ↓        # 默认为下面配置的author.name ↓
 
 [author]                  # essential                     # 必需
@@ -198,7 +198,7 @@ copyright = ""            # default: author.name ↓        # 默认为下面配
 #
 [outputs]
   home = ["HTML", "RSS"]
-#  page = ["HTML", "MarkDown"]
+  page = ["HTML"]
   section = ["HTML", "RSS"]
   taxonomy = ["HTML", "RSS"]
   taxonomyTerm = ["HTML"]
