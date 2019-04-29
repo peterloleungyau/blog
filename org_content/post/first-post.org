@@ -1,0 +1,19 @@
+#+hugo_base_dir: ../../
+#+hugo_section: post
+
+#+hugo_weight: 2001
+#+hugo_auto_set_lastmod: nil
+
+#+title: First Post
+
+#+date: 2019-04-29
+
+#+hugo_tags: blog
+#+hugo_categories: "blog"
+#+author:
+#+hugo_custom_front_matter: :author "Peter Lo"
+
+#+hugo_draft: false
+
+Hello, this is a first post for testing the various parts of this blog.
+
