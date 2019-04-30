@@ -1,19 +1,19 @@
-#+hugo_base_dir: ../../
-#+hugo_section: post
+#+HUGO_BASE_DIR: ../../
+#+HUGO_SECTION: post
 
-#+hugo_weight: 2001
-#+hugo_auto_set_lastmod: nil
+#+HUGO_WEIGHT: 2001
+#+HUGO_AUTO_SET_LASTMOD: nil
 
-#+title: First Post
+#+TITLE: First Post
 
-#+date: 2019-04-29
+#+DATE: 2019-04-29
 
-#+hugo_tags: blog
-#+hugo_categories: "blog"
-#+author:
-#+hugo_custom_front_matter: :author "Peter Lo"
+#+HUGO_TAGS: blog
+#+HUGO_CATEGORIES: "blog"
+#+AUTHOR:
+#+HUGO_CUSTOM_FRONT_MATTER: :author "Peter Lo"
 
-#+hugo_draft: false
+#+HUGO_DRAFT: false
 
 Hello, this is a first post for testing the various parts of this blog.
 
