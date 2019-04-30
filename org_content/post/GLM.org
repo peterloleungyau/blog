@@ -1,0 +1,17 @@
+#+HUGO_BASE_DIR: ../../
+#+HUGO_SECTION: post
+
+#+HUGO_AUTO_SET_LASTMOD: nil
+
+#+TITLE: Generalized Linear Model
+
+#+DATE: 2019-05-17
+
+#+HUGO_TAGS: "Generalized Linear Model"
+#+HUGO_CATEGORIES: "statistics"
+#+AUTHOR:
+#+HUGO_CUSTOM_FRONT_MATTER: :author "Peter Lo"
+
+#+HUGO_DRAFT: true
+
+TODO
