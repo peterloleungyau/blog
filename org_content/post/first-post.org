@@ -1,7 +1,6 @@
 #+HUGO_BASE_DIR: ../../
 #+HUGO_SECTION: post
 
-#+HUGO_WEIGHT: 2001
 #+HUGO_AUTO_SET_LASTMOD: nil
 
 #+TITLE: First Post
