@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Basics of Probability and Random Variable - Peter&#39;s Blog</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Peter Lo" /><meta name="description" content="Roughly speaking, probability describes how likely a certain event takes place, and probability distribution refers to how likely a random variable takes different values. In this post, we look at some examples to get an intuitive idea of probability, sample space, events, random variable and probability space.
+Probability Probability is used to quantitatively describe how likely an event would occur. A probability is a number between (inclusive) 0 and 1, where a larger value means the event is more likely." />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.55.4 with even 4.0.0" />
+
+
+<link rel="canonical" href="https://peterloleungyau.github.io/post/probability-distribution/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="Basics of Probability and Random Variable" />
+<meta property="og:description" content="Roughly speaking, probability describes how likely a certain event takes place, and probability distribution refers to how likely a random variable takes different values. In this post, we look at some examples to get an intuitive idea of probability, sample space, events, random variable and probability space.
+Probability Probability is used to quantitatively describe how likely an event would occur. A probability is a number between (inclusive) 0 and 1, where a larger value means the event is more likely." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://peterloleungyau.github.io/post/probability-distribution/" />
+<meta property="article:published_time" content="2019-05-13T00:00:00&#43;08:00"/>
+<meta property="article:modified_time" content="2019-05-13T00:00:00&#43;08:00"/>
+
+<meta itemprop="name" content="Basics of Probability and Random Variable">
+<meta itemprop="description" content="Roughly speaking, probability describes how likely a certain event takes place, and probability distribution refers to how likely a random variable takes different values. In this post, we look at some examples to get an intuitive idea of probability, sample space, events, random variable and probability space.
+Probability Probability is used to quantitatively describe how likely an event would occur. A probability is a number between (inclusive) 0 and 1, where a larger value means the event is more likely.">
+
+
+<meta itemprop="datePublished" content="2019-05-13T00:00:00&#43;08:00" />
+<meta itemprop="dateModified" content="2019-05-13T00:00:00&#43;08:00" />
+<meta itemprop="wordCount" content="3173">
+
+
+
+<meta itemprop="keywords" content="probability distribution,random variable," />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Basics of Probability and Random Variable"/>
+<meta name="twitter:description" content="Roughly speaking, probability describes how likely a certain event takes place, and probability distribution refers to how likely a random variable takes different values. In this post, we look at some examples to get an intuitive idea of probability, sample space, events, random variable and probability space.
+Probability Probability is used to quantitatively describe how likely an event would occur. A probability is a number between (inclusive) 0 and 1, where a larger value means the event is more likely."/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Peter&#39;s Blog</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a><a href="/about/">
+        <li class="mobile-menu-item">About</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Peter&#39;s Blog</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/about/">About</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">Basics of Probability and Random Variable</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2019-05-13 </span>
+        <div class="post-category">
+            <a href="/categories/statistics/"> statistics </a>
+            <a href="/categories/probability/"> probability </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">Contents</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+<ul>
+<li>
+<ul>
+<li><a href="#probability">Probability</a>
+<ul>
+<li><a href="#frequentist-and-bayesian-interpretation">Frequentist and Bayesian interpretation</a></li>
+</ul></li>
+<li><a href="#sample-space-and-events">Sample space and events</a>
+<ul>
+<li><a href="#example-dice-throwing">Example: Dice throwing</a></li>
+<li><a href="#example-coin-tossing">Example: Coin tossing</a></li>
+<li><a href="#example-multiple-coin-tossings">Example: Multiple coin tossings</a></li>
+<li><a href="#example-time-until-a-newly-manufactured-light-bulb-fails">Example: Time until a newly manufactured light bulb fails</a></li>
+<li><a href="#example-height-and-weight">Example: Height and weight</a></li>
+</ul></li>
+<li><a href="#probability-space">Probability space</a></li>
+<li><a href="#random-variable">Random variable</a>
+<ul>
+<li><a href="#example-dice-throwing-1">Example: Dice throwing</a></li>
+<li><a href="#example-coin-tossing-1">Example: Coin tossing</a></li>
+<li><a href="#example-multiple-coin-tossing">Example: Multiple coin tossing</a></li>
+<li><a href="#example-time-until-a-newly-manufactured-light-bulb-fails-1">Example: Time until a newly manufactured light bulb fails</a></li>
+<li><a href="#example-height-and-weight-1">Example: Height and weight</a></li>
+<li><a href="#distribution-of-random-variable">Distribution of Random Variable</a></li>
+</ul></li>
+<li><a href="#summary">Summary</a></li>
+</ul></li>
+</ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      
+
+<p>Roughly speaking, probability describes how likely a certain event
+takes place, and probability distribution refers to how likely a
+random variable takes different values. In this post, we look at some
+examples to get an intuitive idea of probability, sample space,
+events, random variable and probability space.</p>
+
+<h2 id="probability">Probability</h2>
+
+<p><em>Probability</em> is used to quantitatively describe how <em>likely</em> an
+<em>event</em> would occur. A <em>probability</em> is a number between (inclusive) 0
+and 1, where a larger value means the event is more <em>likely</em>.</p>
+
+<h3 id="frequentist-and-bayesian-interpretation">Frequentist and Bayesian interpretation</h3>
+
+<p>There are two slightly different interpretations of probability:
+<em>frequentist</em> and <em>Bayesian</em> interpretation.</p>
+
+<blockquote>
+<p>Frequentist interpretation:</p>
+
+<p>The probability of an event is the limiting <em>relative frequency</em> that
+the event occurs if the number of trials approaches infinity.</p>
+</blockquote>
+
+<p>For example, under the frequentist interpretation, if we say the
+probability of coin toss giving a tail is 0.6, what is meant is that
+<em>if</em> we flip the coin a <em>huge</em> number of times, 60% of the flips would
+result in a tail.</p>
+
+<p>Note that this interpretation requires that it is at least conceivable
+to repeat the trial to calculate the relative frequency that the event
+occurs. For example, if we were to make sens of the &ldquo;probability that
+the moon is made of cheese&rdquo;, we might need to imagine the moon gets
+repeatedly created, and calculate the proportion where the moon is
+made of cheese.</p>
+
+<p>On the other hand, the Bayesian interpretation of probability is more
+liberal.</p>
+
+<blockquote>
+<p>Bayesian interpretation:</p>
+
+<p>The probability of an event is the <em>degree of belief</em> that it occurs.</p>
+</blockquote>
+
+<p>Under the Bayesian interpretation, we can speak of <em>subjective</em>
+probability, in addition to /objective probability, and there is no
+difficulty of making sense of the &ldquo;probability that the moon is made
+of cheese&rdquo;. Also, by the <em>Law of large number</em>, the relative frequency
+of an event will tend to the objective probability if the number of
+trials tends to infinity.</p>
+
+<p>In practice, it does not matter much which interpretation you
+subscribe to, because the formulas related to probability are mostly
+the same (sometimes frequentists refuse to give interpretation to some
+formulas in some cases). The difference is more philosophical than
+practical.</p>
+
+<h2 id="sample-space-and-events">Sample space and events</h2>
+
+<p>Whether we use frequentist or Bayesian interpretation of probability,
+one key ingredient is <em>event</em>. For an event to make sense, it suffices
+to have a clear criteria to determine whether an event has
+occurred. For example, if we throw a dice, we may consider the
+following events:</p>
+
+<ul>
+<li>event A: the number is 2</li>
+<li>event B: the number is even</li>
+<li>event C: the number is odd</li>
+<li>event D: the number is less than 3</li>
+<li>event E: the number is both even and odd</li>
+</ul>
+
+<p>We note that the above events are related:</p>
+
+<ul>
+<li>Since 2 is even and is less than 3, event A implies both event B and event D.</li>
+<li>Event C and D have some overlap (e.g. the number 1 is both odd and less than 3), but neither one implies the other.</li>
+<li>Also, an integer is either even or odd, but not both, so event B and event C are <em>exclusive</em>, and together they are <em>exhaustive</em>.</li>
+<li>Moreover, event E is an impossible event.</li>
+</ul>
+
+<p>When modeling a situation, we can formally define a <em>sample space</em>,
+which could be regarded as the set of atomic events, and subsets of
+the sample space are the events. Note that we may model the same
+situation with different sample spaces, but some sample space may be
+more intuitive than others.</p>
+
+<p>Events can give rise to other events, for example:</p>
+
+<ul>
+<li>event E above is &ldquo;event B <em>and</em> event C&rdquo;;</li>
+<li>event B is &ldquo;<em>not</em> event C&rdquo; since an integer is either even or odd;</li>
+<li>event D is &ldquo;the number is less than 3&rdquo;, which is the same as &ldquo;the number is 1 <em>or</em> the number is 2&rdquo; in this example.</li>
+</ul>
+
+<p>In general:</p>
+
+<ul>
+<li>the whole sample space (the set of all atomic events) is always an event, this is an event that is sure to happen</li>
+<li>if A is an event, then &ldquo;not A&rdquo; is also an event</li>
+<li>if A1, A2, &hellip; are (finite or <em>countably infinite</em> many) events, then &ldquo;A1 <em>or</em> A2 <em>or</em> &hellip;&rdquo; and &ldquo;A1 <em>and</em> A2 <em>and</em> &hellip;&rdquo; are also events</li>
+</ul>
+
+<h3 id="example-dice-throwing">Example: Dice throwing</h3>
+
+<p>For instance, in the dice throwing example, we could define the sample
+space as {1, 2, 3, 4, 5, 6}, then the 4 events above are respectively:</p>
+
+<ul>
+<li>event A (the number is 2): {2}</li>
+<li>event B (the number is even): {2, 4, 6}</li>
+<li>event C (the number is odd): {1, 3, 5}</li>
+<li>event D (the number is less than 3): {1, 2}</li>
+<li>event E (the number is both even and odd): {}</li>
+</ul>
+
+<h3 id="example-coin-tossing">Example: Coin tossing</h3>
+
+<p>As another example, for tossing a coin once, we may define the sample
+space as {H, T} for &ldquo;Head&rdquo; and &ldquo;Tail&rdquo;. Note that the sample space can
+consist of any object, not just numbers. Also note that by defining
+the sample space as {H, T}, we are implicitly excluding the
+possibility that the coin may land on its edge, and therefore giving
+neither a &ldquo;Head&rdquo; nor a &ldquo;Tail&rdquo;.</p>
+
+<h3 id="example-multiple-coin-tossings">Example: Multiple coin tossings</h3>
+
+<p>We may also model multiple coin tossings. E.g. if we model 3 coin
+tossings, we may define the sample space as {(H,H,H), (H,H,T),
+(H,T,H), (H,T,T), (T,H,H), (T,H,T), (T,T,H), (T,T,T)}, then we may
+consider events such as:</p>
+
+<ul>
+<li>&ldquo;two heads out of 3 tosses&rdquo;: {(H,H,T), (H,T,H), (T,H,H)}</li>
+<li>&ldquo;the first two tossings give the same results&rdquo;: {(H,H,H), (H,H,T), (T,T,H), (T,T,T)}</li>
+</ul>
+
+<p>We can even model infinitely many coin tossings, e.g. by defining the
+sample space as \(\{(x_1, x_2, \ldots): x_i \in \{H,T\}\}\). Then we may
+consider events such as:</p>
+
+<ul>
+<li>&ldquo;the first toss is head&rdquo;: \(\{(H,x_2,x_3,\ldots): x_i \in \{H,T\}\}\)</li>
+<li>&ldquo;it takes 3 tosses to get the first head&rdquo;: \(\{(T,T,H,x_4,x_5,\ldots): x_i \in \{H,T\}\}\)</li>
+<li>&ldquo;head and tail appears alternately&rdquo;: \(\{(H,T,H,T,\ldots), (T,H,T,H,\ldots)\}\)</li>
+</ul>
+
+<h3 id="example-time-until-a-newly-manufactured-light-bulb-fails">Example: Time until a newly manufactured light bulb fails</h3>
+
+<p>For modeling time until some events occur, we may define the sample
+space as \(\{x: x&gt;0\}\). For example, the time (in hours) until a newly
+manufactured light bulb fails. Although we can measure &ldquo;time&rdquo; only up
+to a certain precision, &ldquo;time&rdquo; is conceptually <em>continuous</em>, and
+therefore often modeled as a continuous real value. We may then
+consider events such as:</p>
+
+<ul>
+<li>&ldquo;the light bulb will not fail in the first 10,000 hours&rdquo;: \(\{x: x&gt;10 000\}\)</li>
+<li>&ldquo;the light bulb will not last more than 100,000 hours&rdquo;: \(\{x: 0 &lt; x \leq 100 000\}\)</li>
+</ul>
+
+<p>On the other hand, in some cases, modeling the time as integers may be
+sufficient, e.g. when we want to count the number of days of a patient
+staying in the hospital, but do not want to consider fractional number
+of days. In such case, we may take the sample space as {0, 1, 2, &hellip;}.</p>
+
+<h3 id="example-height-and-weight">Example: Height and weight</h3>
+
+<p>For height and weight of a person, similar to time, although we can
+measure height and weight only up to a certain precision, they are
+conceptually continuous, and therefore often modeled as continuous
+real values. We may define the sample space as \(\{(h,w): h&gt;0, w&gt;0\}\)
+(suppose we measure height h in &ldquo;m&rdquo;, and weight w in &ldquo;kg&rdquo;). We may then
+consider events such as:</p>
+
+<ul>
+<li>&ldquo;the height is below 1.6m&rdquo;: \(\{(h,w): 0 &lt; h &lt; 1.6, w&gt;0\}\)</li>
+<li>&ldquo;the BMI is above 20, but below 24, where BMI is the weight in kg divided by the square of the height in m&rdquo;: \(\{(h,w): 20 &lt; \frac{w}{h^2} &lt; 24\}\)</li>
+</ul>
+
+<h2 id="probability-space">Probability space</h2>
+
+<p>A <em>sample space</em>, the <em>events</em>, together with the probabilities of the
+events, is called a <em>probability space</em>.</p>
+
+<p>As we see from the examples above, some events in a sample space may
+be related, it is then unsurprising that their probabilities are also
+related. Probabilities are very similar to <em>measure</em> such as
+area.</p>
+
+<p>Suppose there is a region (e.g. a square) with area 1.</p>
+
+<ul>
+<li>Then intuitively, any smaller regions inside would have area less than or equal to 1.</li>
+<li>In fact, if a region A is entirely within another region B, the area of A is not larger than the area of B.</li>
+<li>Also, the total area of two non-overlapping regions is the sum of the areas of the two regions.</li>
+</ul>
+
+<p>In a probability space:</p>
+
+<ul>
+<li>the probability of the whole sample space is 1.</li>
+<li>And if events A and B are exclusive of each other (have no overlaps, i.e. no common atomic events), then the probability of &ldquo;A or B&rdquo; is the sum of probability of A and probability of B.</li>
+<li>In fact, this summation rule works for countably infinitely many exclusive events.</li>
+<li>If event C is a subset of event D (event C implies event D, i.e. every atomic event in C is also in D), then the probability of C is less than or equal to the probability of D.</li>
+<li>Note that even if D contains all atomic events of C, and D has some other atomic events not in C, the probability of D may still be the same as the probability of C, because the extra events may have probability zero.</li>
+<li>Since any event E and &ldquo;not E&rdquo; are exclusive, and &ldquo;E or (not E)&rdquo; is the whole sample space, &ldquo;probability of E&rdquo; plus the &ldquo;probability of not E&rdquo; is equal to the probability of the sample space, which is 1. Consequently, &ldquo;probability of not E&rdquo; is 1 minus the &ldquo;probability of E&rdquo;.</li>
+<li>The probability is often denoted as \(P(.)\), e.g. \(P(\text{event B}) = P(\{2, 4, 6\})\) denotes the probability of event B in the dice throwing example above.</li>
+</ul>
+
+<p>If the sample space is finite or countably infinite, the events are
+usually all the possible subsets of the sample space, and by the
+summation rule above, if we know the probabilities of each atomic
+event, we can get the probability of any event by summation. For
+example, we have \(P(\{2, 4, 6\}) = P(\{2\}) + P(\{4\}) + P(\{6\})\).</p>
+
+<p>But if the sample space is uncountably infinite, the events often have
+uncountably infinitely many elements, we cannot simply use the
+summation rule to get the probability of an event from the sum of the
+atomic events, because the rule works only for a sum of countably many
+terms. We would not go into further details of such technical issues,
+but it should be emphasized that the above rules still work, and we
+can nevertheless define a consistent probability measure on all the
+events such as \(\{x: x&gt; 10 000\}\) and \(\{x: 500 \leq x &lt; 2000\}\).</p>
+
+<h2 id="random-variable">Random variable</h2>
+
+<p>From a sample space, there may be many quantities that may be of
+interest. In the above examples, we have quantities such as</p>
+
+<ul>
+<li>&ldquo;number of heads out of 3 tosses&rdquo;</li>
+<li>&ldquo;number of tosses to get the first head&rdquo;</li>
+<li>BMI, which is calculated from the weight and height</li>
+</ul>
+
+<p>These are examples of <em>random variable</em>. Note that the values of these
+quantities can all be determined by knowing which atomic event has
+occurred. More formally, a <em>random variable</em> is a <em>function</em> from the
+atomic events of a sample space to a value (which could be any object,
+not just numbers). Let&rsquo;s look at some examples of random variables
+that can be defined on the above sample spaces:</p>
+
+<h3 id="example-dice-throwing-1">Example: Dice throwing</h3>
+
+<table>
+<thead>
+<tr>
+<th>Atomic event</th>
+<th>1</th>
+<th>2</th>
+<th>3</th>
+<th>4</th>
+<th>5</th>
+<th>6</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>\(X_1\)</td>
+<td>1</td>
+<td>2</td>
+<td>3</td>
+<td>4</td>
+<td>5</td>
+<td>6</td>
+</tr>
+
+<tr>
+<td>even</td>
+<td>0</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+</tr>
+
+<tr>
+<td>odd</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+<td>0</td>
+<td>1</td>
+<td>0</td>
+</tr>
+
+<tr>
+<td>\(X_2\)</td>
+<td>6</td>
+<td>5</td>
+<td>4</td>
+<td>3</td>
+<td>2</td>
+<td>1</td>
+</tr>
+
+<tr>
+<td>\(X_3\)</td>
+<td>A</td>
+<td>A</td>
+<td>B</td>
+<td>B</td>
+<td>C</td>
+<td>C</td>
+</tr>
+
+<tr>
+<td>\(X_4\)</td>
+<td>20</td>
+<td>712</td>
+<td>4</td>
+<td>-8</td>
+<td>6466</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+
+<ul>
+<li>Note that we may define multiple random variables on the same sample space, and the relationship between the atomic event and the value of the random variable can be arbitrarily complex, as long as for each atomic event, the random variable takes only a single value.</li>
+<li>\(X_1\) is simply the atomic event itself.</li>
+<li>&ldquo;even&rdquo; and &ldquo;odd&rdquo; takes only the values 0 and 1, and are usually called <em>indicator</em> variables, which assume the value 1 for a particular event of interest, and 0 otherwise.</li>
+<li>\(X_1\) and \(X_2\) both takes the values 1 to 6, but on different atomic events.</li>
+<li>\(X_1\) and \(X_2\) are also related in that \(X_1 + X_2 = 7\) in any case.</li>
+<li>\(X_3\) is an example of random variable that is not numeric, but here it takes the values &ldquo;A&rdquo;, &ldquo;B&rdquo; or &ldquo;C&rdquo;.</li>
+<li>For \(X_4\), you need not try to guess a succinct formula between the atomic event and its value, because I just hit the number pad randomly to get these numbers.</li>
+<li>Nevertheless, \(X_4\) is a perfectly valid random variable defined on the above sample space.</li>
+</ul>
+
+<h3 id="example-coin-tossing-1">Example: Coin tossing</h3>
+
+<table>
+<thead>
+<tr>
+<th>Atomic event</th>
+<th>H</th>
+<th>T</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>\(y_1\)</td>
+<td>1</td>
+<td>0</td>
+</tr>
+
+<tr>
+<td>\(Y_2\)</td>
+<td>0</td>
+<td>1</td>
+</tr>
+
+<tr>
+<td>\(Y_3\)</td>
+<td>1</td>
+<td>1</td>
+</tr>
+</tbody>
+</table>
+
+<ul>
+<li>\(Y_1\) is simply an indicator for &ldquo;head&rdquo; and \(Y_2\) is an indicator for &ldquo;tail&rdquo;.</li>
+<li>Note that \(Y_3\) takes the same value 1 on the different atomic events, so it is a <em>constant</em>.</li>
+<li>It may seem strange that a constant would be called a <em>random variable</em>, because it is not at all <em>random</em>, and does not <em>vary</em>. But it satisfies the definition of <em>random variable</em>, though sometimes a constant may be called a degenerate random variable.</li>
+</ul>
+
+<h3 id="example-multiple-coin-tossing">Example: Multiple coin tossing</h3>
+
+<p>We may define a random variable \(Z_1\) as the number of tosses until
+the first &ldquo;head&rdquo; (including the toss giving the first &ldquo;head&rdquo;), more
+precisely, \(Z_1 = \min \{t: x_t = H\}\). Note that \(Z_1\) can
+potentially take any integer greater than 0. For example, \(Z_1 = 1\) on
+all of \(\{(H,\ldots)\}\), and \(Z_1 = 2\) on all of \(\{(T,H,\ldots)\}\).</p>
+
+<p>We may define another random variable \(Z_2\) as the number of heads in
+the first 100 tosses, then the possible values of \(Z_2\) are integers
+from 0 to 100. Note that even though each element of the sample space
+is infinitely long (representing infinitely many tosses), the value of
+\(Z_2\) could be determined from the first 100 tosses. If we only want
+to model \(Z_2\), we may as well use a (finite but very large) sample
+space such as \(\{(x_1, x_2, \ldots, x_{100}): x_i \in \{H,T\}\}\).</p>
+
+<h3 id="example-time-until-a-newly-manufactured-light-bulb-fails-1">Example: Time until a newly manufactured light bulb fails</h3>
+
+<p>In this sample space \(\{x: x&gt;0\}\), we may define a random variable
+\(W_1\) as the time (in hours) until a newly manufactured light bulb
+fails, which would simply take the value of the atomic event.</p>
+
+<p>We may also define another random variable \(W_2\) as a discretized
+version of \(W_1\) by taking only the integer part, i.e. \(W_2 = 0\) if \(0
+\leq W_1 &lt; 1\), and \(W_2 = 1\) if \(1 \leq W_1 &lt; 2\) and so on. In
+general, we may discretize a continuous random variable by whatever
+break points we like.</p>
+
+<p>We may define a vector valued random variable \(W_3 = (t, d)\), where \(d
+= 0\) if \(x &gt; 10000\), and \(d = 1\) if \(x \leq 10000\); \(t = min(x,
+10000)\). Note that the two elements of the vector are related.</p>
+
+<h3 id="example-height-and-weight-1">Example: Height and weight</h3>
+
+<table>
+<thead>
+<tr>
+<th>Atomic event</th>
+<th>\((h,w)\)</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>\(V_1\)</td>
+<td>h</td>
+</tr>
+
+<tr>
+<td>\(V_2\)</td>
+<td>w</td>
+</tr>
+
+<tr>
+<td>\(V_3\)</td>
+<td>\(\frac{w}{h^2}\)</td>
+</tr>
+
+<tr>
+<td>\(V_4\)</td>
+<td>\((w, \frac{w}{h^2})\)</td>
+</tr>
+</tbody>
+</table>
+
+<ul>
+<li>Here \(V_1\) is simply the height, and \(V_2\) is the weight, and \(V_3\) is the BMI.</li>
+<li>Note that the value of \(V_4\) is a vector of the weight and the BMI.</li>
+<li>In general, the value of a random variable can be even more complicated objects.</li>
+</ul>
+
+<h3 id="distribution-of-random-variable">Distribution of Random Variable</h3>
+
+<p>Loosely speaking, the distribution of a random variable refers to how
+likely (i.e. the probability) it would take various values or ranges
+of values.</p>
+
+<p>Let&rsquo;s consider the dice throwing example. What is the probability that
+the random variable &ldquo;even&rdquo; is 1, i.e. what is \(P(\text{even} = 1)\)? We
+see that \(\text{even} = 1\) exactly when the atomic events are either
+2, 4 or 6, intuitively, \(P(\text{even} = 1) = P(\{2, 4, 6\})\), which
+is equal to \(P(\{2\}) + P(\{4\}) + P(\{6\})\).</p>
+
+<p>As another example, what is the probability that \(X_3\) is equal to
+&ldquo;B&rdquo;, i.e. what is \(P(X_3 = \text{B})\)? We see that \(X_3 = \text{B}\)
+exactly when the atomic event is either 3 or 4, so \(P(X_3 = \text{B})
+= P(\{3, 4\})\), which is equal to \(P(\{3\}) + P(\{4\})\).</p>
+
+<p>We can also find the probability that a random variable takes a range
+of values. For example, to find \(P(X_2 \geq 4)\), we first determine
+that \(X_2 \geq 4\) exactly when the atomic event is either 1, 2 or 3,
+so \(P(X_2 \geq 4) = P(\{1, 2, 3\})\), which is equal to \(P(\{1\}) +
+P(\{2\}) + P(\{3\})\).</p>
+
+<p>For continuous random variables, the process of determining the
+probability is similar. For the height and weight example, to find
+\(P(40 \leq V_2 \leq 60)\), we find the subset of the sample space for
+which \(40 \leq V_2 \leq 60\), i.e. \(\{(h, w): 40 \leq V_2 \leq 60\} =
+\{(h, w): 40 \leq w \leq 60, h &gt; 0\}\). So \(P(40 \leq V_2 \leq 60) =
+P(\{(h, w): 40 \leq w \leq 60, h &gt; 0\})\).</p>
+
+<p>As another example, \(P(20 \leq V_3 \leq 24) = P(\{(h, w): 20 \leq V_3
+\leq 24\})\), which is equal to \(P(\{(h, w): 20 \leq \frac{w}{h^2} \leq
+24\})\), although it is not easy to visualize this set here.</p>
+
+<p>In general, since the atomic event determines the value of a random
+variable, in order to find the probability that the random variable
+takes a value or a range of values, we first determine the set of
+atomic events that give rise to these values, then determine
+probability of this set of atomic events, which would be well-defined
+exactly when this set is also an event. Technically, we would require
+the random variable to be <em>measurable</em> with respect to the probability
+space, i.e. the sets of atomic events corresponding to various values
+of the random variable are events, but we would not go into details.</p>
+
+<p>We see that the distribution of a random variable is induced from the
+underlying probability space, but if we are focusing only on one
+random variable, we often only describe the probability distribution
+of the random variable, without mentioning the underlying sample
+space. For example, for the \(X_3\) in the dice throwing example, since
+it can only take the values &ldquo;A&rdquo;, &ldquo;B&rdquo; or &ldquo;C&rdquo;, when only looking at the
+value of \(X_3\), we can know which subset of atomic events has
+occurred, but cannot pinpoint exactly which atomic event has
+occurred. For instance, knowing that \(X_3 = \text{A}\), we only know
+that the event is \(\{1, 2\}\), but cannot pinpoint whether the event is
+1 or 2. Therefore, we may summarize the distribution of \(X_3\) by
+specifying only \(P(X_3 = \text{A})\), \(P(X_3 = \text{B})\) and \(P(X_3 =
+\text{C})\). We would look at more examples in the next post.</p>
+
+<h2 id="summary">Summary</h2>
+
+<p>In this post, we have looked at the following concepts:</p>
+
+<ul>
+<li>probability: either the degree of belief of an event, or the limiting relative frequency of an event when the number of trials approaches infinity.</li>
+<li>sample space: the set of atomic events.</li>
+<li>event: subset of the sample space.</li>
+<li>probability space: a sample space, the events, and a probability measure on the events.</li>
+<li>random variable: a function from the sample space to a value.</li>
+</ul>
+
+<p>In the next post, we would look at more examples of distributions of
+discrete and continuous random variables, and the parametric way of
+specifying distributions.</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">Author</span>
+    <span class="item-content">Peter Lo</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">LastMod</span>
+    <span class="item-content">
+        2019-05-13
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      <div class="post-tags">
+          <a href="/tags/probability-distribution/">probability distribution</a>
+          <a href="/tags/random-variable/">random variable</a>
+          </div>
+      <nav class="post-nav">
+        
+        <a class="next" href="/post/first-post/">
+            <span class="next-text nav-default">First Post</span>
+            <span class="next-text nav-mobile">Next</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        <div id="disqus_thread"></div>
+    <script type="text/javascript">
+    (function() {
+      
+      
+      if (window.location.hostname === 'localhost') return;
+
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      var disqus_shortname = 'https-peterloleungyau-github-io';
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:peterloleungyau@gmail.com" class="iconfont icon-email" title="email"></a>
+      <a href="https://www.linkedin.com/in/leung-yau-lo-7a3274167/" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="https://github.com/peterloleungyau" class="iconfont icon-github" title="github"></a>
+  <a href="https://peterloleungyau.github.io/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    Powered by <a class="hexo-link" href="https://gohugo.io">Hugo</a>
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    Theme - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2019
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Peter Lo</span>
+  </span>
+</div>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+  <script type="text/javascript">
+    window.MathJax = {
+      showProcessingMessages: false,
+      messageStyle: 'none'
+    };
+  </script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@2.7.5/MathJax.js?config=TeX-MML-AM_CHTML"  integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script>
+
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-139262854-1', 'auto');
+	ga('set', 'anonymizeIp', true);
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+
+
+
+
+
+
+</body>
+</html>

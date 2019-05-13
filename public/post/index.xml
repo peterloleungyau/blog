@@ -5,10 +5,20 @@
     <description>Recent content in Posts on Peter&#39;s Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Mon, 29 Apr 2019 00:00:00 +0800</lastBuildDate>
+    <lastBuildDate>Mon, 13 May 2019 00:00:00 +0800</lastBuildDate>
     
         <atom:link href="https://peterloleungyau.github.io/post/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Basics of Probability and Random Variable</title>
+      <link>https://peterloleungyau.github.io/post/probability-distribution/</link>
+      <pubDate>Mon, 13 May 2019 00:00:00 +0800</pubDate>
+      
+      <guid>https://peterloleungyau.github.io/post/probability-distribution/</guid>
+      <description>Roughly speaking, probability describes how likely a certain event takes place, and probability distribution refers to how likely a random variable takes different values. In this post, we look at some examples to get an intuitive idea of probability, sample space, events, random variable and probability space.
+Probability Probability is used to quantitatively describe how likely an event would occur. A probability is a number between (inclusive) 0 and 1, where a larger value means the event is more likely.</description>
+    </item>
     
     <item>
       <title>First Post</title>

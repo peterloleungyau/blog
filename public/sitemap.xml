@@ -9,8 +9,57 @@
   </url>
   
   <url>
+    <loc>https://peterloleungyau.github.io/post/probability-distribution/</loc>
+    <lastmod>2019-05-13T00:00:00+08:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
     <loc>https://peterloleungyau.github.io/categories/</loc>
-    <lastmod>2019-04-29T00:00:00+08:00</lastmod>
+    <lastmod>2019-05-13T00:00:00+08:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://peterloleungyau.github.io/</loc>
+    <lastmod>2019-05-13T00:00:00+08:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://peterloleungyau.github.io/post/</loc>
+    <lastmod>2019-05-13T00:00:00+08:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://peterloleungyau.github.io/tags/</loc>
+    <lastmod>2019-05-13T00:00:00+08:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://peterloleungyau.github.io/categories/probability/</loc>
+    <lastmod>2019-05-13T00:00:00+08:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://peterloleungyau.github.io/tags/probability-distribution/</loc>
+    <lastmod>2019-05-13T00:00:00+08:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://peterloleungyau.github.io/tags/random-variable/</loc>
+    <lastmod>2019-05-13T00:00:00+08:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://peterloleungyau.github.io/categories/statistics/</loc>
+    <lastmod>2019-05-13T00:00:00+08:00</lastmod>
     <priority>0</priority>
   </url>
   
@@ -19,24 +68,6 @@
     <lastmod>2019-04-29T00:00:00+08:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
-  </url>
-  
-  <url>
-    <loc>https://peterloleungyau.github.io/</loc>
-    <lastmod>2019-04-29T00:00:00+08:00</lastmod>
-    <priority>0</priority>
-  </url>
-  
-  <url>
-    <loc>https://peterloleungyau.github.io/post/</loc>
-    <lastmod>2019-04-29T00:00:00+08:00</lastmod>
-    <priority>0</priority>
-  </url>
-  
-  <url>
-    <loc>https://peterloleungyau.github.io/tags/</loc>
-    <lastmod>2019-04-29T00:00:00+08:00</lastmod>
-    <priority>0</priority>
   </url>
   
   <url>
