@@ -1,0 +1,235 @@
+#+HUGO_BASE_DIR: ../../
+#+HUGO_SECTION: post
+
+#+HUGO_AUTO_SET_LASTMOD: nil
+
+#+TITLE: Discrete Distributions
+
+#+DATE: 2019-05-20
+
+#+HUGO_TAGS: "probability distribution" "discrete distribution"
+#+HUGO_CATEGORIES: "statistics" "probability"
+#+AUTHOR:
+#+HUGO_CUSTOM_FRONT_MATTER: :author "Peter Lo"
+
+#+HUGO_DRAFT: false
+
+A probability distribution of a random variable refers to the
+probabilities that the random variable takes various values. In the
+case the the random variable can take only countably many different
+values, it is called a discrete random variable. In this case, we can
+summarize the distribution by simply specify the probabilities of the
+different values. In this post, we first look at a simple example to
+get an intuitive idea of distribution of discrete random variable,
+then look at some examples of common discrete random variables.
+# summary
+
+* Discrete Random Variable
+We first use a simple example to explain some probability concepts.
+
+** Simple Example: A Weird Dice
+Let's start with a really simple example. Suppose we have a weird
+dice, let $X$ be the random variable of the value of the dice when
+thrown, where the probabilities of getting different values are as
+follows:
+
+| $X$    |   1 |    2 |   3 |   4 |   5 |    6 |
+|--------+-----+------+-----+-----+-----+------|
+| $P(X)$ | 0.2 | 0.05 | 0.1 | 0.4 | 0.1 | 0.15 |
+
+Note that the probabilities are all non-negative, and sum to 1. Also
+note that we have not explicitly specified the sample space, which in
+practice is usually omitted, as there could be many possible sample
+spaces, and that when looking at one random variable, the sample space
+is not very useful anyway. In this case, we could simply regard the
+set of possible values of the random variable as the sample space, and
+the random varible is simply the identity function on the sample
+space.  E.g. we could take $\{1, 2, 3, 4, 5, 6\}$ as the sample space
+for $X$ above.
+
+We may visualize the distribution as follows:
+
+#+begin_src R :results output graphics :file discrete_eg1.png :exports results
+  barplot(height=c(0.2, 0.05, 0.1, 0.4, 0.1, 0.15),
+          names.arg = 1:6,
+          main = "Distribution of X",
+          ylab = "Probability",
+          xlab = "Value of X")
+#+end_src
+
+#+RESULTS:
+[[file:discrete_eg1.png]]
+
+Recall that the probability of an event is the relative frequency of
+the event when the number of trials approaches infinity. Therefore, if
+we throw the above weird dice a /huge/ number of times, and plot the
+bar chart of the proportion of the different values observed, we would
+get a plot /very/ close to the above.
+
+In this example, the probability of $X=1$ is twice the probability of
+$X=3$, so in a large number of trials (e.g. 10000), we would expect to
+see /about/ twice as many 1's as 3's. The probabilities describes how
+the trials would be /distributed/ among the different possible values.
+
+With the summation rule of exclusive (also called disjoint) events, we
+can calculate the probability of various events on $X$.
+
+For example:
+
+| Event        | Probability                                                                         |
+|--------------+-------------------------------------------------------------------------------------|
+| $X$ is even  | $P(X \in \{2, 4, 6\}) = P(X=2) + P(X=4) + P(X=6)$, which is 0.05 + 0.4 + 0.15 = 0.6 |
+| $X$ is prime | $P(X \in \{2, 3, 5\}) = P(X=2) + P(X=3) + P(X=5)$, which is 0.05 + 0.1 + 0.1 = 0.25 |
+| $X = 3.5$    | $P(X = 3.5) = 0$                                                                    |
+
+In principle, for any event, we can determine the probability by
+summing over the appropriate probabilities.
+
+** Probability Mass Function
+In general, to summarize the distribution of a discrete random
+variables, we only need to specify its probabilities on different
+values. The function $f(x) = P(X=x)$ is called the /Probability Mass
+Function/ (pmf for short) of the discrete random variable $X$.
+
+Probability values are non-negative and no larger than 1, and that the
+probability of a sure event is 1. Therefore, for the random variable
+$X$ in the dice example, any sequence of 6 *non-negative* numbers that
+sum to 1 could specify a possible distribution.
+
+If a random variable can take only a finite number of values, it is
+possible to explicitly list the probabilities of the different values,
+as we have done in the above example. On the other hand, when a random
+variable can take infinitely many different values, it is impossible
+to explicitly list out the probabilities, therefore a formula is used
+for the Probability Mass Function. In fact, often it is more
+convenient to use a formula even for the finite case. The formula
+often has (usually a small number) /parameters/ that let us vary
+values of the probability, and the parameters often have
+interpretation in the situation being modeled. Such distributions are
+called /parametric distributions/. We will see concrete examples
+later, but before that, let's talk about some useful basic concepts.
+
+** Conditional Probability and Bayes Rule
+If we know partial information on the value of a random variable, but
+not its exact value, will the probabilities of the different values
+change? In the weird dice example, can we make sense of sentence such
+as "what is the probability that $X$ is 4, /given/ that it is even"?
+
+In the frequentist interpretation, a probability is the relative
+frequency of an event in infinitely many trials. Then it seems
+reasonable to interpret the above sentence as "the relative frequency
+of 4 among the trials that are even, in an infinitely many
+trials". Let's say we throw the dice 10,000 times, we would expect the
+approximate number of times of the different values as follows:
+
+| $X$                                  |      1 |        2 |      3 |         4 |      5 |         6 |
+|--------------------------------------+--------+----------+--------+-----------+--------+-----------|
+| $P(X)$                               |    0.2 |     0.05 |    0.1 |       0.4 |    0.1 |      0.15 |
+| approx. frequency in 10,000 throws   |   2000 |      500 |   1000 |      4000 |   1000 |      1500 |
+| relative frequency among even throws |      0 | 500/6000 |      0 | 4000/6000 |      0 | 1500/6000 |
+|--------------------------------------+--------+----------+--------+-----------+--------+-----------|
+| approx. frequency in $n$ throws      | $0.2n$ |  $0.05n$ | $0.1n$ |    $0.4n$ | $0.1n$ |   $0.15n$ |
+| relative frequency among even throws |      0 | 0.05/0.6 |      0 |   0.4/0.6 |      0 |  0.15/0.6 |
+
+Out of 10,000 throws, approximately 500 + 4000 + 1500 = 6000 throws
+would be even, therefore, among these throws, the relative frequency
+of 4 is 4000/6000 = 2/3. We note that the number "10,000" does not
+play a crucial role. If consider $n$ throws, approximately $0.05n +
+0.4n + 0.15n$ would be even, and the relative frequency of 4 among
+even throws would be /approximately/ $0.4n/0.6n = 2/3$, where the $n$
+gets cancelled. As $n$ approaches infinitely, the true relative
+frequency should converge to 2/3, which is $P(X=4)/P(X \text{ is
+even})$.
+
+In the Bayesian interpretation, probability is a degree of belief of
+an event, normalized such that the degree of belief of the sure event
+is 1. Before knowing anything about the value of the dice throw, our
+degree of belief that it is 4 would be $P(X=4) = 0.4$, and that it is
+3 is $P(X=3) = 0.1$, which means we believe it is 4 times more likely
+to get a 4 as opposed to a 3. Having learnt that the throw is even,
+our degree of belief should be updated, in particular, now the only
+possibilities are 2, 4 or 6, therefore we know that it cannot be 3, so
+the degree of belief that "it is 3 given that it is even" would
+be 0. Intuitively, out of the possibilities 2, 4, and 6, we need only
+figure out their relative degree of belief, to again get a normalized
+degree of belief. Note that dividing the degree of belief by the same
+number would not change their relative degree of belief, so we need
+only divide them by a number $c$ such that they sum to 1. A moment of
+thought would reveal that we should divide by $c = P(X \text{ is
+even}) = P(X=2) + P(X=4) + P(X=6)$, because then their sum would be
+$P(X=2)/c + P(X=4)/c + P(X=6)/c$ which is $(P(X=2) + P(X=4) +
+P(X=6))/c = 1$, as desired. Therefore, the "the probability that $X$
+is 4, /given/ that it is even" would be $P(X=4)/P(X \text{ is even})$,
+which is 0.4/0.6 = 2/3, and unsurprisingly the same as the value
+above.
+
+The concept such as "the probability that $X$ is 4, /given/ that it is
+even" is called /conditional probability/. In general, "the
+probability of event A, /given/ and event B", denoted as $P(A|B)$ is
+defined as
+
+\begin{equation}
+P(A|B) = \frac{P(A \text{ and } B)}{P(B)}
+\end{equation}
+where it is assumed that $P(B) > 0$.
+
+We can visualize it as follows:
+
+[[file:conditional_prob_eg1.png]]
+
+Where the rectangle represents the sample space with area 1, and the
+two ovals represent the events A and B, and their areas are the
+respective probabilities of event A and B. When given event B, the
+possiblities are reduced from the rectangle to the oval B, and to
+determine "the probability of A, given B", i.e. $P(A|B)$, we only need
+to figure out the relative ratio of area of "A and B" (the grey part)
+to "A and (not B)" (the pink part), and normalize then to sum
+to 1. Since the areas of "A and B" and "A and (not B)" sums to the
+area of "B", therefore $P(A|B)$ would be $\frac{P(A \text{ and }
+B)}{P(B)}$.
+
+Moreover, by rearranging the terms of $P(A|B) = P(A \text{ and } B)/P(B)$, we have
+
+\begin{equation}
+P(A \text{ and } B) = P(B)P(A|B)
+\end{equation}
+
+and similarly we also have
+
+\begin{equation}
+P(A \text{ and } B) = P(A)P(B|A)
+\end{equation}
+
+where we can decompose $P(A \text{ and } B)$ into two parts, which
+sometimes may be easier to compute.
+
+We also briefly mention the famous Bayes rule, which is a direct
+consequence of the definition of conditional probability:
+
+\begin{equation}
+P(A|B) = \frac{P(A \text{ and } B)}{P(B)} \\
+= \frac{P(A)P(B|A)}{P(B)}
+\end{equation}
+
+which is very useful when determining $P(B|A)$ is easier than
+determining $P(A|B)$. An example of application of the Bayes rule is
+the /naive Bayes classifier/, but we will not go into details here.
+
+** Indpendent Events and Independent Random Variables
+
+
+** Expected Value and Variance
+
+* Common Discrete Distributions
+
+** Discrete Uniform Distribution
+
+** Bernoulli Distribution
+
+** Binomial Distribution
+
+** Geometric Distribution
+
+** Negative Binomial Distribution
+
+** Poisson Distribution
