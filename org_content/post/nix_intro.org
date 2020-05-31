@@ -1,0 +1,66 @@
+#+HUGO_BASE_DIR: ../../
+#+HUGO_SECTION: post
+
+#+HUGO_AUTO_SET_LASTMOD: nil
+
+#+TITLE: Introduction to Nix
+
+#+DATE: 2020-05-31
+
+#+HUGO_TAGS: "Nix" "Package Manager" "Reproducibility"
+#+HUGO_CATEGORIES: "Nix"
+#+AUTHOR:
+#+HUGO_CUSTOM_FRONT_MATTER: :author "Peter Lo"
+
+#+HUGO_DRAFT: true
+
+These are some summary notes of what I have learnt about the
+functional package manager Nix, including what is Nix, why Nix, common
+use cases of Nix, reproducibility, Nix compared with other package
+managers. Here I only focus on the basics, but will point out some
+parts of Nix that are interesting and that I should dig deeper.
+
+# summary
+
+* What is Nix?
+  There are a few related things bearing the name "Nix", all originated from Eelco Dolstra's PhD thesis [[https://nixos.org/~eelco/pubs/phd-thesis.pdf][The Purely Functional Software Deployment Model]]. Here we will focus more on the Nix package manager.
+
+** Nix: the lazy functional programming language
+   - designed for building the Nix package manager
+   - expression oriented
+   - values immutable
+   - values evaluated only when needed
+
+** Nix: the functional package manager
+   - in fact a package building system
+   - designed to properly address the "dependency hell" problem
+   - aim at reproducible builds
+   - allows atomic upgrade of packages
+   - allows easy rollback of install/uninstall actions
+   - encourages declarative package management
+   - works on Linux, MacOS, Windows WSL and WSL2
+   - allows each user to install their own packages
+     - without root privilege
+     - without interfering other users
+   - allows easy creation of isolated environments with designated packages
+   - supports a few architectures:
+     - GNU/Linux on 32-bit (i686-linux)
+     - GNU/Linux on 64-bit x86 (x86_64-linux)
+     - Apple macOS (x86_64-darwin) (macOS v10.12+)
+     - Beta support for GNU/Linux on ARM's aarch64 (aarch64-linux)
+
+** NixOS: a Linux distribution built on Nix
+   - in addition to package management, also allows system management and configuration declaratively using a single =configuration.nix=
+     - system services
+     - system packages (can be run by all users)
+     - allows easy rollback to previous configuration after configuration change or system update
+
+** NixOps: Nix for DevOps 
+   - allows deploying to NixOS machines in a network or on the cloud
+     - declarative
+     - support multi-cloud
+
+* Why Nix?
+* Basic Idea of Functional Package Management
+* Some Use Cases of Nix
+* Other Interesting Topics
