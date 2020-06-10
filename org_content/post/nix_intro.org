@@ -23,25 +23,28 @@ parts of Nix that are interesting and that I should dig deeper.
 # summary
 
 * What is Nix?
-  There are a few related things bearing the name "Nix", all originated from Eelco Dolstra's PhD thesis [[https://nixos.org/~eelco/pubs/phd-thesis.pdf][The Purely Functional Software Deployment Model]]. Here we will focus more on the Nix package manager.
+  There are a few related things bearing the name "Nix", all originated from Eelco Dolstra's PhD thesis [[https://nixos.org/~eelco/pubs/phd-thesis.pdf][The Purely Functional Software Deployment Model]]. We first give an overview of the different "Nix", then we will focus more on the Nix package manager.
 
 ** Nix: the lazy functional programming language
    - designed for building the Nix package manager
    - expression oriented
    - values immutable
    - values evaluated only when needed
+   - knowing the Nix language is not necessary for most daily uses of the Nix package manager. In most cases, you may treat it as some strange config file syntax
+   - however, building custom packages would need some knowledge of the Nix language
 
 ** Nix: the functional package manager
-   - in fact a package building system
+   - in fact a package building system, being a good package manager is a side effect
    - designed to properly address the "dependency hell" problem
    - aim at reproducible builds
    - allows atomic upgrade of packages
    - allows easy rollback of install/uninstall actions
+   - allows different versions of the "same" package to coexist and used by different pakcages, without conflict
    - encourages declarative package management
    - works on Linux, MacOS, Windows WSL and WSL2
    - allows each user to install their own packages
      - without root privilege
-     - without interfering other users
+     - without interferring other users
    - allows easy creation of isolated environments with designated packages
    - supports a few architectures:
      - GNU/Linux on 32-bit (i686-linux)
@@ -50,10 +53,11 @@ parts of Nix that are interesting and that I should dig deeper.
      - Beta support for GNU/Linux on ARM's aarch64 (aarch64-linux)
 
 ** NixOS: a Linux distribution built on Nix
-   - in addition to package management, also allows system management and configuration declaratively using a single =configuration.nix=
+   - in addition to package management, also allows declarative system management and configuration using a single =configuration.nix=
      - system services
      - system packages (can be run by all users)
      - allows easy rollback to previous configuration after configuration change or system update
+       - so even if an update breaks the system, can easily boot into previous working configuration
 
 ** NixOps: Nix for DevOps 
    - allows deploying to NixOS machines in a network or on the cloud
@@ -61,6 +65,106 @@ parts of Nix that are interesting and that I should dig deeper.
      - support multi-cloud
 
 * Why Nix?
+
+** Dependency Hell
+   - What is a dependency?
+     - loosely speaking, if you want to use some functionality provided by a package A (which may be an application, or a library), but it need some functionality provided by another package B, then A /depends/ on B, i.e. B is a /dependency/ of A.
+     - dependency could be direct or indirect.
+   - Types of dependency
+     - buildtime dependency:
+       - something is needed to build a package A, examples are compilers and related tools such as =gcc=, =make=, =cmake=, =sed=, =awk=, etc
+     - runtime dependency:
+       - something that is needed when a package A (an application or library) is run
+   - What is considered the same version?
 * Basic Idea of Functional Package Management
 * Some Use Cases of Nix
-* Other Interesting Topics
+** Used similar to package manager such as apt, yum, homebrew, pip
+   - TODO: add example commands
+   - install package
+     - TODO: e.g. install a package that needs system dependency if installed on Linux
+     - TODO: install two different versions of a package
+       - though possible, it is inconvenient, because Nix channels often just keeps the lastest version of a package
+         - this is in my opinion a downside of Nix
+       - in order to install a previous version, would need to find the previous commit with the desired version
+       - this site (written by third party) give a convenient way to query which commits contains which versions:
+         - https://lazamar.co.uk/nix-versions/
+   - uninstall package
+   - upgrade package
+   - update package list
+   - roll-back
+** Used similar to Python virutal environment
+*** Profiles: multiple profiles per user
+    - each user has a default profile
+    - each user can create multiple profiles as needed
+      - TODO: create profile
+    - can switch between different profiles
+      - TODO: switch profile
+    - can manage packages within each profile independently
+      - TODO: e.g.
+        - install package in one profile,
+        - switch to another,
+        - install another package,
+        - switch back to the previous profile
+    - can specify the list of packages in a file
+    - downside:
+      - switching profile would modify the link in the user's home directory, so it seems each time only one profile could be active
+        - TODO: need to verify this. Is it possible to just "source" a particular profile within a shell?
+      - the user need to associate the profile with the projects manually, and switch to appropriate profile depending on the project being worked on
+*** Nix-shell
+    - Nix-shell can be used to create an environment for building a package, i.e. open a new shell where the build dependencies of a package are all available
+    - so by creating a dummy package with wanted packages as build dependencies, can open a new shell with selected packages
+    - the packages could be specified in a file such as =shell.nix= or =default.nix=
+      - which could reside in the project directory, i.e. associated with project
+      - can be version controlled together with other source code, therefore tracks the packages used throughout project development
+      - example =shell.nix=
+        #+begin_src nix
+          # These packages could be installed globally with "nix-env -if mmds_hk.nix" in the command-line
+          with import <nixpkgs> {};
+          let 
+            wanted-pkgs = with rPackages; [
+                  Boruta
+                  lubridate
+                  ranger
+                  tidyverse
+                ];
+            R-with-needed-pkgs = rWrapper.override {
+                packages = wanted-pkgs;
+            };
+            Rstudio-with-needed-pkgs = rstudioWrapper.override {
+                packages = wanted-pkgs;
+            };
+          in
+          mkShell rec {
+            name = "ds-packages";
+            buildInputs = 
+              [
+                R-with-needed-pkgs
+                Rstudio-with-needed-pkgs
+              ];
+          }
+        #+end_src
+    - convenient for development, but would need a little change in the workflow
+      - when working on the project
+        #+begin_src bash
+          # first get to the project directory, which contains the shell.nix
+          cd project
+          # get a new shell, nix-shell by default would look for "shell.nix" or "default.nix"
+          # you could manually specify any nix file by "nix-shell other.nix"
+          nix-shell
+          # note that the first time running the above may take a long time to
+          # build either download or build the needed packages, which would them
+          # be cached so that subsequent calls would be much faster.
+
+          # then within the shell, open the tools needed for development, e.g. R
+          R
+
+          # when done, can exit the shell, and your global environment would not be affected
+        #+end_src
+      - note that you can open multiple shells with different =shell.nix=, so can easily work on multiple projects, possibly using differents sets of packages or packages with different version without interference.
+    - things to note:
+      - TODO: the R wrapper
+      - TODO: in the above example =shell.nix=, we only list the package names, but not their version, so which exact version is used?
+** Use with Docker
+* Other Interesting Topics Not Covered
+  - home-manager
+  - 
