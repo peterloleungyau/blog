@@ -23,7 +23,7 @@ parts of Nix that are interesting and that I should dig deeper.
 # summary
 
 * What is Nix?
-  There are a few related things bearing the name "Nix", all originated from Eelco Dolstra's PhD thesis [[https://nixos.org/~eelco/pubs/phd-thesis.pdf][The Purely Functional Software Deployment Model]]. We first give an overview of the different "Nix", then we will focus more on the Nix package manager.
+  There are a few related things bearing the name "Nix", all originated from Eelco Dolstra's PhD thesis [[https://nixos.org/~eelco/pubs/phd-thesis.pdf][The Purely Functional Software Deployment Model]]. We first give an overview of the different "Nix", then we will focus more on the Nix package manager. Don't worry if the following description sounds foreign to you at the moment, some main points would be elaborated in subsequent sections.
 
 ** Nix: the lazy functional programming language
    - designed for building the Nix package manager
@@ -35,6 +35,7 @@ parts of Nix that are interesting and that I should dig deeper.
 
 ** Nix: the functional package manager
    - in fact a package building system, being a good package manager is a side effect
+   - partly inspired by functional programming, and by [[https://wiki.gentoo.org/wiki/Main_Page][Gentoo]]'s package management
    - designed to properly address the "dependency hell" problem
    - aim at reproducible builds
    - allows atomic upgrade of packages
@@ -67,16 +68,65 @@ parts of Nix that are interesting and that I should dig deeper.
 * Why Nix?
 
 ** Dependency Hell
+   - loosely speakinig, a package is a collection of functionality that we are interested in, e.g.
+     - a library of functions,
+     - some applications,
+     - command line programs,
+     - or just a set of documentation files
    - What is a dependency?
      - loosely speaking, if you want to use some functionality provided by a package A (which may be an application, or a library), but it need some functionality provided by another package B, then A /depends/ on B, i.e. B is a /dependency/ of A.
      - dependency could be direct or indirect.
-   - Types of dependency
-     - buildtime dependency:
-       - something is needed to build a package A, examples are compilers and related tools such as =gcc=, =make=, =cmake=, =sed=, =awk=, etc
-     - runtime dependency:
-       - something that is needed when a package A (an application or library) is run
+     - Types of dependency
+       - buildtime dependency:
+         - something is needed to build a package A, examples are compilers and related tools such as =gcc=, =make=, =cmake=, =sed=, =awk=, etc
+       - runtime dependency:
+         - something that is needed when a package A (an application or library) is run
+       - optional dependency:
+         - some packages are written in a very flexible way, and allow some dependency to be optional
+         - e.g. a package may require only that either dependency A or dependency B is present to fullfill certain functionality, it might even be ok if neither is present, but then some functionality may not be available in the built package
+           - e.g. =emacs= could be built with or without X support
+         - in most package manager which mainly distribute binary packages, often most optional dependencies would be included to provide the most funcitonality
+   - Package versioning
+     - strictly speaking, package version is just a name attached to a package, and the name could theoretically be arbitrary, although most package authors follow some conventions
+     - for example, a lot of packages follow the [[https://semver.org/][Semantic versioning]], briefly
+       - a version number consists of three numbers, in the format of "MAJOR.MINOR.PATCH", e.g. "1.0.4", where each should be increment as follows
+         - MAJOR: when you make incompatible API changes, where MINOR and PATCH could be reset to 0, e.g. from "1.2.3" to "2.0.0"
+         - MINOR: when you add functionality in a backwards compatible manner, where PATCH could be reset to 0, e.g. from "1.2.3" to "1.3.0"
+         - PATCH: when you make backwards compatible bug fixes, e.g. from "1.2.3" to "1.2.4"
+     - side note: some software uses strange versioning schemes:
+       - [[https://en.wikipedia.org/wiki/TeX][TeX]] (by Donald Knuth): the version converges to pi, adding one more digit to the tail in each version bump, e.g. one version is "3.14159265", while its previous version is "3.1415926". The author stipulates that when he dies, the version would be permanently set to pi.
+       - [[https://en.wikipedia.org/wiki/Metafont][Metafont]] (also by Donald Knuth): the version similarly converges to e, the base of natural log, and should be permanently set to e upon the Author's death.
    - What is considered the same version?
+     - while for different version number, presumably the package has some change, which may be a large or small change
+     - even with the same version of source, the built package could still be different, because:
+       - some optional dependency is omitted
+       - different versions of the dependency is used
+       - different (versions of) tools such as compiler are used
+       - different configurations of the tools are used, e.g. the compiling flags
+       - it is built on/for different platform, where some functionality may not be available
+     - so even for the same version number, the package might still have different contents (not bit-for-bit identical), and provide different functionality
+   - What is dependency hell?
+     - TODO
+   - How are some existing package managers address/prevent dependency hell?
+     - TODO
+   - But the current way seems to work well, isn't it?
+     - TODO
+     - for simpler use, mostly ok, because we do not often have strict requirement on the exact versions used
+     - some packages use only a part of its dependency, which may remain the same in a number of different versions
+     - IMPORTANT:
+       - but in production, we do not want any such risk
+       - we would rather use the exact same set of packages and its dependencies that we have tested
+       - any tools that reduces frictions of accomplishing this should be preferred
+
+** Reproducibility
+   - Why reproducibility?
+     - TODO
+   - How reproducible?
+     - TODO
 * Basic Idea of Functional Package Management
+  - TODO: list the desired features, think about how they could be achieved, step by step, to come up with the Nix design
+  - The main features of Nix
+  - How we might achieve these features?
 * Some Use Cases of Nix
 ** Used similar to package manager such as apt, yum, homebrew, pip
    - TODO: add example commands
@@ -160,11 +210,88 @@ parts of Nix that are interesting and that I should dig deeper.
 
           # when done, can exit the shell, and your global environment would not be affected
         #+end_src
-      - note that you can open multiple shells with different =shell.nix=, so can easily work on multiple projects, possibly using differents sets of packages or packages with different version without interference.
     - things to note:
-      - TODO: the R wrapper
-      - TODO: in the above example =shell.nix=, we only list the package names, but not their version, so which exact version is used?
+      - note that you can open multiple shells with different =shell.nix=, so can easily work on multiple projects, possibly using differents sets of packages or packages with different version without interference.
+      - note that we use =rWrapper= above, as explained at https://nixos.wiki/wiki/R
+        - the idea is that since we may have multiple different sets of R packages that we may want to use in different projects, so we cannot simply use a global location to store all the R packages, as is the common practice. Using a global location for packages leads to all the problems related to different package versions.
+        - we therefore want each profile (or nix-shell) to have its own designated set of R packages, which R can access
+        - the solution in Nix is to have a R wrapper that changes the =R_LIBS_SITE= to a location for the particular set of R packages, before running R
+        - consequently we need to declare the accessible R packages when specifying the =rWrapper=
+        - also, by virute of Nix's use of hash to identify packages, =rWrapper= with different sets of packages would end up with different hashes, and therefore do not interfere with each other
+        - on the other hand, =rWrapper= with the same set of R packages would have be the same hash
+        - similar mechanism is needed for RStudio using the =rstudioWrapper=, because RStudio insists on managing the R packages itself
+        - similar mechanism also exists for Python packages
+        - this way of managing R packages may seem unfamiliar and inconvenient, but a declarative way of managing packages should lead to less pain in the long run, espcially when we want reproducibility
+      - also note that in the above example =shell.nix=, we only list the package names, but not their version, so which exact version is used?
+        - it should be emphasized that having the same package name does not mean it is necessarily the exact same package, at the very least the version should be included
+        - in fact, even packages with the same name and version might have been built with different configs or optional dependencies, and therefore may still behave differently
+        - therefire, Nix goes further and uses hash of the inputs and build configs to identify packages
+        - so in this case, when we only specify the package name, which exact version of the packages are used?
+        - Nix would have by default some nix channels, so the installed version is the one currently in the nix channel
+        - also note that the Nix community prefer to mostly keep only the latest version of each package in the channel, and if multiple versions are kept, they would have the version in their names
+          - e.g. as of this writing, we have multiple versions of gcc in the unstable channel:
+            - =gcc48= is GNU Compiler Collection, version 4.8.5 (wrapper script)
+            - =gcc49= is GNU Compiler Collection, version 4.9.4 (wrapper script)
+            - =gcc6= is GNU Compiler Collection, version 6.5.0 (wrapper script)
+            - =gcc7= is GNU Compiler Collection, version 7.5.0 (wrapper script)
+            - =gcc8= is GNU Compiler Collection, version 8.4.0 (wrapper script)
+            - =gcc9= and =gcc= both are GNU Compiler Collection, version 9.3.0 (wrapper script)
+            - =gcc10= is GNU Compiler Collection, version 10.1.0 (wrapper script)
+          - sometimes a group of packages is put together, e.g. ==python27Packages=, =python37Packages=, =python38Packages= contain packages for Python 2.7, 3.7 and 3.8 respectively.
+            - E.g. python27Packages.statsmodels=, =python37Packages.statsmodels=, =python38Packages.statsmodels= are the "Statistical computations and models for use with SciPy" for Python 2.7, Python 3,7 and Python 3.8 respectively
+          - on the other hand, =R= is currently 4.0.0, with no easy way to specify the previous version such as 3.6.3
+        - note that when you update your channel, and use the same name to install the packages, the exact version may have changed, which may be undesirable in development, or when reproducibility is important
+          - if we want reproducibility, we need to pin the versions
+          - instead of painstakingly write down the exact version number of each package, we want a simpler way
+          - since the nix channels are maintained in a git repository (https://github.com/NixOS/nixpkgs), it would be sufficient to know the exact commit we want to use, in order to freeze the package versions at a point in time
+          - for example, the above =shell.nix= could be written as:
+            #+BEGIN_SRC nix
+              # refer to https://nixos.wiki/wiki/FAQ/Pinning_Nixpkgs
+              with import (builtins.fetchTarball {
+                # Descriptive name to make the store path easier to identify
+                name = "nixos-unstable-2018-09-12";
+                # Commit hash for nix git as of 2020-04-21, before switching R from 3.6.3 to 4.0.0
+                url = "https://github.com/NixOS/nixpkgs/archive/ff2f2644f8ea1b364dde5dfee2bc76027afccaf9.tar.gz";
+                # Hash obtained using `nix-prefetch-url --unpack <url>`
+                sha256 = "0y2nfzwxpsjcwvhl1sih1cxknm88nb824ldk8qgv1cv7wp4hn04m";
+              }) {};
+              let 
+                wanted-pkgs = with rPackages; [
+                  Boruta
+                  lubridate
+                  ranger
+                  tidyverse
+                ];
+                R-with-needed-pkgs = rWrapper.override {
+                    packages = wanted-pkgs;
+                };
+                Rstudio-with-needed-pkgs = rstudioWrapper.override {
+                    packages = wanted-pkgs;
+                };
+              in
+              mkShell rec {
+                name = "ds-packages";
+                buildInputs = 
+                  [
+                    # can add othr packages if desired
+                    R-with-needed-pkgs
+                    # Rstudio-with-needed-pkgs
+                  ];
+              }
+
+            #+END_SRC
+          - note that we use =builtins.fetchTarball= to get a particular commit from github, where the commit is specified in the url, you may also use =builtins.fetchGit= or the older =builtins.fetchFrom GitHub=, as described in https://nixos.wiki/wiki/FAQ/Pinning_Nixpkgs
+          - also note that we specify the sha256 hash of the fetched tarball, so that we can be confidently the content would be as expected
+          - you may get the hash using
+            #+BEGIN_SRC bash
+            nix-prefetch-url --unpack "the url"
+            #+END_SRC
+            - which not only fetches the content but also show the hash
+            - another lazy way is to just fill the sha256 arbitrarily, then attempt to use the =shell.nix= in nix-shell, and let Nix give error and tell you the expected hash
+          - note that the fetched tarball would be cached in the nix store for a certain amount of time (by default 1 hour, as explained in the [[https://nixos.org/nix/manual/][Nix manual]], you my want to set the cached time to be longer) so that subsequent calls of nix-shell can use the cached version
+        - therefore by having a similar =shell.nix= for each project, specifying the exact commit of Nix pkgs and the packages, each collaborator of the project can use a consistent set of packages by issusing a =nix-shell= command under the project root, and the same set of package could also be used on servers such as Jenkins without you explicitly having to install the needed packages on the Jenkins servers before running a job
 ** Use with Docker
+   - TODO
 * Other Interesting Topics Not Covered
   - home-manager
   - 
