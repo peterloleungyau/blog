@@ -111,9 +111,10 @@ We first list out some concepts related to packages and dependency:
        - *run-time dependency*: dependency needed for using the package, e.g. running the application
          - e.g. the *dynamically linked libraries*, i.e. the libraries will be loaded only when the program is run
          - nowadays, most programs use mostly dynamically linked libraries
+         - NOTE: a dependency can be both build-time and run-time dependency
      - *optional dependency*: dependency that can be omitted for the package to build or run, but some functionality may be missing
-       - e.g. =emacs= can be built with or without X support
-       - in most package manager which mainly distribute binary packages, often most optional dependencies would be included to provide the most funcitonality
+       - e.g. [[http://www.inkscape.org/][inkscape]] can be built without the optional dependency =potrace=, just without bitmap tracing functionality.
+       - in most *package manager* which mainly distribute binary packages, often most optional dependencies would be included to provide the most funcitonality
    - *dependency hell*:
      - roughly speaking, [[https://en.wikipedia.org/wiki/Dependency_hell][dependency hell]] refers to the problems caused by the dependency on specific versions of some packages.
      - dependency hell takes a few forms:
@@ -134,19 +135,122 @@ We first list out some concepts related to packages and dependency:
          - the new implementation may have buggy edge case, causing A to break
          - the new implementation may expose a buggy edge case in A, causing A to break
    - *reproducible build*
-     - 
+     - it is desirable to have the /exact same versions/ of dependencies between testing and production systems, and preferably also for the development environment
+     - it is therefore desirable to /reproduce/ the exact same set of packages on a different machine (of the same architecture) and/or at a different time
+     - this could be achieved in two main ways:
+       - record the set of versions of the (pre-built) packages, and reinstall when needed
+         - e.g. python virtual environment mostly follow this paradigm
+       - record the set of versions of the packages, and rebuild then when needed
+         - this is similar to the previous one, with the difference that the package can be built from scratch if needed
+         - e.g. Guix can rebuild package(s) through the set of package definitions with explicit dependencies information
+           - Guix can simply download the pre-built package (called /substitute/ in Guix) when available
+       - record the set of built packages and just copy them as a whole when needed
+         - e.g. building a docker image to contain all needed packages
+     - isolated building environment can help with reproduciblity
+       - only the explicitly listed dependencies are visible in building, so that the building script will not depend on other packages unknowingly
+   - reproducibility raises the question of /sameness/ of packages
+     - the package name with version number /would be/ sufficient if each version if always built the same way with the same versions of dependencies
+       - this is the strategy adopted by most package managers
+     - a better way is to use the package name together with some kind of *hash*
+       - not necessarily the hash /of/ the package itself, as we will see in later sections
+       - but different contents of a package should produce different hashes
    - *hash*:
-     - 
+     - basically a (very large) integer calculated through a *hash function* on some input, e.g. a file
+     - the calculated integer is in some fixed range, often written as a long hexadecimal string such as "730e109bd7a8a32b1cb9d9a09aa2325d2430587ddbc0c38bad911525"
+     - the input however often has not length limit
+     - e.g. [[https://en.wikipedia.org/wiki/SHA-2][sha-256]], [[https://en.wikipedia.org/wiki/MD5][md5]]
+     - desired properties of a good *hash function*:
+       - the same input always produce the same hash, i.e. it is a /pure function/ in the mathematical sense
+         - i.e. if two inputs produce different hashes, they /must be/ different
+       - it is one-way
+         - there is not efficient way to recover the original content just from the hash, other than trying all possible input to find those that give the same hash
+       - even a slight change in the input causes drastically different hash
+         - useful for identifying corruption or tampering of files
+       - /low/ collision, i.e. different inputs /should/ produce different hashes
+         - it is impossible to have /no/ collision unless the set of possible inputs is less than the set of possible outputs
+     - note that one hash is enough to represent a web of connected things:
+       - e.g.
+         - if you have a few (ordered) inputs, you hash each of them, and write the hashes to a file, then you hash this file
+         - this is still a deterministic hashing process
+         - if any of the input is changed, its calculated hash will /most probably/ be different, so this file of hashes will be different, and consequently the final hash will be different
+         - each of the input itself could contain hashes of more inputs recursively, so a web of things could be represented as one hash
+         - this technique is also used in [[https://git-scm.com/][git]] version control system to link the commits together
+         - the same technique could be used to hash the (direct) dependencies of a package, and therefore one hash could represent all the direct and indirect dependencies of a package
 
 * Why bother with Guix? There are other ways to handle dependency
+Although there are a lot of package managers at both the language level and operating system level, and tools such as docker to help tackle the dependency problem, Guix still has merits when compared to these, as we now discuss.
 
-- use other package managers such as apt/yum/pacman 
+- opearting system package managers
+  - e.g. apt, yum, pacman
+  - these package managers resolve dependencies for you, some allows pinning particular versions of package
+  - sometimes language specific packages is also packaged
+  - downsides:
+    - these package managers mostly operate by /mutating/ the system state when adding or removing packages, so may not be easy to revert to previous state in case installing/upgrading some packages causes problem
+      - if the process is interrupted, the system might be in an inconsistent state
+      - installing/upgrading package may cause some dependencies to be updated, which might break other packages
+      - subsequently removing that package does not necessarily revert the updated dependencies
+    - since installing/upgrading package may cause dependencies to be updated, which may cause conflicts if some packages need older versions of the dependencies
+      - although this is not common, this could be painful when happens
+      - this is problematic often when you want newer version of some package, but older version of another package, and they (or their chain of dependencies) somehow have version conflicts
+  - upsides of Guix:
+    - Guix can be used just like the usual system package manager, although there are better ways of using it for specific needs
+    - every install/remove/upgrade packages action (which may involve multiple packages) is one /transaction/, and causes a /generation/ to be created
+      - Guix can detect and remedy interrupt of the action to maintain transactional behavior, i.e. either it succeeds or fails as a whole, so that the system would not be in a half-completed inconsistent state.
+        - if an action is interrupted, it has not succeeded, and can be safely repeated
+        - but in case an action involves multiple packages, a completely downloaded or built package need not be re-built or re-downloaded when the action is repeated, since they would be cached (in a /store/ where only the Guix daemon can modify) and identified by hash.
+      - a /generation/ is essentially a record of the set of specific packages and their dependencies, so it is easy to revert to previous generation
+        - all the packages and dependencies referenced by a generation would be kept in the system
+        - so normally removing packages in Guix simply results in a generation without those packages, the packages themselves are still in the system cache, this is similar in spirit to git where a commit "deletes" some files.
+        - reverting to other generation involves only updating some symbolic links, so are quick
+        - the user safely try out different versions of some packages, knowing that it is easy to revert to previous known good state if the user dislike the version for whatever reason (e.g. bugs, different UI, missing features, etc)
+        - the user can optionally delete older generations, and do a /garbage collection/ to really delete any unreferenced (directly or indirectly) packages to free up disk space
+    - each package in Guix literally has its dependencies hard-coded using absolute paths to the dependeny in the /store/
+      - each package in Guix is cached in a /store/ with a path with some sort of hash to identify the exact version of the package
+      - therefore an updated package may also have updated dependencies, but older versions of the package or other packages still refer to their previous versions of dependencies fixed at built time
+      - therefore there is no fear that updating a package will break another package just because they share some dependencies with conflicting versions
+      - also, two packages with conflicting dependencies can coexist in Guix because each can have their own versions of dependencies
 - use language specific package manager such as pip, packrat, npm, etc
+  - many programming languages have their own package manager, because the system package manager may not have these language-specific packages, and having a language specific one would be more uniform across different operating systems or Linux distributions
+  - e.g.
+    - pip for Python
+    - =install.packages()= for R
+    - npm for Javascript
+    - RubyGems for Ruby
+    - Cabal for Haskell
+  - for better management of possibly difference packages for different projects, there are either some sort of /virtual environment/, or some kind of /lock files/ to pin-point the versions of set of packages for each project, e.g.
+    - [[https://github.com/pyenv/pyenv#simple-python-version-management-pyenv][pyenv]], [[https://virtualenv.pypa.io/en/stable/][virtualenv]], [[https://docs.continuum.io/anaconda/packages/pkg-docs/][anaconda]] for Python, see [[https://stackoverflow.com/a/39928067]] for a brief comparison
+    - [[https://rstudio.github.io/packrat/][packrat]] or [[https://rstudio.github.io/renv/][renv]] for R
+    - rubygems, npm and cabal have lock files
+  - downsides:
+    - these language-specific package managers naturally only handles packages for on programming language
+      - if a project uses only one programming language, e.g. Python, then either one of the virtual environment manger may be sufficient
+      - but if the projects in the same team use multiple programming languages, e.g. both Python and R for data science projects, then the users would need to be familiar with multiple package managers
+      - these package managers may not help with system-level dependencies, especially when pre-built binary package is not available (e.g. R packages under Linux) and the package needs to be built
+      - some dependencies are not managed by these virtual environments
+        - e.g. packrat, being an R library, does not help manage the version of R itself
+          - although this is often ok because R is usually backward compatible, but sometimes there could be issues, e.g. see https://github.com/rstudio/packrat/issues/327
+        - in contrast, virutal environments in Python can also manage different versions of Python, because there are bigger differences between versions of Python
+      - the virtual environments are often setup per-project, but identical packages (and dependencies) may be duplicated instead of shared, taking up more disk space than necessary (unless the filesystem had built-in support for deduplication)
+        - e.g. packrat for R install a copy of the needed packages for each project
+        - in contrast, renv for R has a global shared cache of packages, so that identical packages can be shared for different projects, see https://cloud.r-project.org/web/packages/renv/vignettes/renv.html
+  - upsides of Guix:
+    - TODO
 - avoid dependency hell by including all dependencies
   - docker
   - flatpak, AppImage
 
-* How you might have designed Guix
+* A closer look at Guix
+** How you might have designed Guix
+
+** Overview of the different parts of Guix
+
+* Try out Guix
+
+** In qemu virtual machine
+
+** Install on existing GNU/Linux distribution (possibly in a VM)
+
+** Install the Guix system, the GNU/Linux distribution built on the Guix package manager
 
 * How to use Guix?
 
@@ -159,14 +263,6 @@ We first list out some concepts related to packages and dependency:
 *** A little demo
 
 ** Use Guix to create docker image
-
-* Try out Guix
-
-** In qemu virtual machine
-
-** Install on existing GNU/Linux distribution (possibly in a VM)
-
-** Install the Guix system, the GNU/Linux distribution built on the Guix package manager
 
 * Other related topics
   - use Guix in other OS than GNU/Linux
