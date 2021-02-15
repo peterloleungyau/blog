@@ -125,7 +125,27 @@ We first list out some concepts related to packages and dependency:
          - in many package manager (and default in dynamic library in Linux), minor versions are considered backward compatible, and for each package of the same major version, only the newest minor version is kept/used
          - if both package A and B depend on a package C, but A and B needs different minor versions of C to work correctly, then A and B have conflicts
          - this may happen if B is updated to B1 causing C to be updated to C1, therefore causing A to break, even if the older versions of the 3 packages previously coexisted and worked correctly.
+           #+begin_src dot
+             digraph before_update {
+               C -> A;
+               C -> B;
+             }
+           #+end_src
+
+           #+begin_src dot
+             digraph after_update {
+               C1 -> A;
+               C1 -> B1;
+             }
+           #+end_src
          - in this case, it is clear that if we just let A to use the old C, and the new B1 to use the new C1, then A can work as before, and B can still be updated to B1.
+           #+begin_src dot
+             digraph better_case {
+               C -> A;
+               C1 -> B1;
+             }
+           #+end_src
+
    - ways that code of package A can break if a dependency B updates to a supposingly /backward compatible/ minor version:
      - although most of the time updating a minor version does not cause problem, they might still cause breakage
      - e.g. suppose A depends on a function in B, there could be a few cases:
@@ -192,6 +212,13 @@ Although there are a lot of package managers at both the language level and oper
     - since installing/upgrading package may cause dependencies to be updated, which may cause conflicts if some packages need older versions of the dependencies
       - although this is not common, this could be painful when happens
       - this is problematic often when you want newer version of some package, but older version of another package, and they (or their chain of dependencies) somehow have version conflicts
+    - since the packages are installed to some shared location, usually root privilege is needed to install/upgrade/remove packages, e.g. through =sudo=
+      - this is not much of a problem on desktop Linux system because it is often used by one person
+      - it is more of a problem on servers with multiple users, either we trust all users and give them root privilege (through =sudo=), or we reserve the root privilege to a small number of users (e.g. the system admins)
+      - and the possibility of possible breakage and conflict when upgrading packages only increases with the number of users
+      - therefore, on such systems, some users may not get the packages he/she wants, either it is too new or too old, because the updating schedule is often set by the system admins
+      - package managers such as [[https://brew.sh/][Homebrew]] try to remedy this short-coming by installing packages under the user's home directory, and therefore each user can manage his/her own packages without root privilege
+        - although this reduces possible conflicts with other users, there are still possible conflicts among the packages
   - upsides of Guix:
     - Guix can be used just like the usual system package manager, although there are better ways of using it for specific needs
     - every install/remove/upgrade packages action (which may involve multiple packages) is one /transaction/, and causes a /generation/ to be created
@@ -209,6 +236,10 @@ Although there are a lot of package managers at both the language level and oper
       - therefore an updated package may also have updated dependencies, but older versions of the package or other packages still refer to their previous versions of dependencies fixed at built time
       - therefore there is no fear that updating a package will break another package just because they share some dependencies with conflicting versions
       - also, two packages with conflicting dependencies can coexist in Guix because each can have their own versions of dependencies
+    - Guix allows each user to manage his/her own packages without root privilege
+      - the /store/ of installed packages in Guix is managed by a dedicated daemon, so are essentially read-only to the users, so identical packages can be safely shared
+      - each user has his/her symbolic links under the home directory to profiles containing sets of packages, so any install/upgrade/remove actions can be performed by the user without root privilege
+      - and as mentioned above, because of hard-coded dependencies for each package, there will not be package conflicts among users nor for the same user
 ** Use language specific package manager such as pip, packrat, npm, etc
   - many programming languages have their own package manager, because the system package manager may not have these language-specific packages, and having a language specific one would be more uniform across different operating systems or Linux distributions
   - e.g.
@@ -397,11 +428,35 @@ Although there are a lot of package managers at both the language level and oper
               #+begin_src shell
                 work -- sh myscript.sh
               #+end_src
+            - again, using Guix ensures that the correct versions of the needed packages are there when needed, this is especially convenient when you need to run code on multiple machines, e.g. on multiple Jenkins nodes, and saves you the trouble of manually managing the dependencies on multiple machines for multiple projects.
           - it should be clear that Guix can provide at least the same virtual environment like functionality, if not more useful and convenient
 ** Avoid dependency hell by including all dependencies
-  - TODO
-  - docker
-  - flatpak, AppImage
+  - including all depedencies is also a valid way to avoid dependency hell
+  - this has been common practice in Windows or MacOS for many years
+  - in Linux, smilar strategy has become more common in recent years, e.g (among others).
+    - [[https://flatpak.org/][flatpak]] provides bundled dependencies and sandboxing. This is mainly for application distribution
+    - [[https://appimage.org/][AppImage]] aims at providing a universal format for application that can run in different Linux distributions, with dependencies included. This is mainly for application distribution
+    - [[https://www.docker.com/][docker]] provided bundled dependencies in an /docker image/, and can run programs in an isolated (optionally for network and filesystem access) /container/. This is commonly used for deployment and preparing a consistent development environment.
+      - docker images are often built using a /dockerfile/ which is a text file with imperative directives
+      - docker images are often built on top of another base image which already has included a lot of needed parts, so that by choosing (or first building) a suitable base image, images can often be built with a relatively simple dockerfile.
+      - once a docker image is built, the same running environment can be easily reproduced by starting another container using the same image
+  - I will focus more on docker, as I do not have much experience with either flatpak or AppImage, but I think the comments apply similarly.
+  - downsides:
+    - although once the package or docker image is built, the user should have little trouble with dependencies, these tools do not provide much help with building the package or docker image
+    - in order to /build/ a docker image /reproducibly/ through dockerfile, great care must be exercised:
+      - a dockerfile often starts from a base image (e.g. from [[https://hub.docker.com/][docker hub]]) by a name and a tag, but the image itself may have been updated inbetween builds
+        - if the base image is something like =ubuntu:latest= which is meant to be the most updated version, it is normal that different builds using the same dockerfile would see different base image
+      - most dockerfiles would then update the package manager repository of the base image, e.g. =apt-get update= for Debian based distributions
+        - this is usually done to get security updates of the packages
+        - therefore, at different times, the exact versions of the packages may be different
+      - then it is usual to install some package through the distribution package manager of the base image, or some language specific package manager
+        - if the package versions are not carefully pinned, different versions may get installed at different times
+      - if some packages are built from git repository, then a particular commit need to be used, otherwise, the latest version at the time of the build will be used
+      - basically, dockerfile itself does not provide much help for reproducible build, it is up to the writer of the dockerfile to ensure as much reproducibility as possible
+    - of course, sometimes the intention is simply to build the latest version of some packages, without reproducibility requirements, then dockerfiles is sufficient
+  - upsides of Guix:
+    - 
+    - TODO
 
 * A closer look at Guix
 ** How you might have designed Guix
@@ -416,15 +471,9 @@ Although there are a lot of package managers at both the language level and oper
 
 ** Install the Guix system, the GNU/Linux distribution built on the Guix package manager
 
-* How to use Guix?
+* A little demo
 
-** As replacement of apt, yum, brew, etc
-
-** As replacement of Python virtual environment using profiles
-
-** Easy way to manage dependencies of multiple projects
-
-*** A little demo
+** Managing project dependencies
 
 ** Use Guix to create docker image
 
