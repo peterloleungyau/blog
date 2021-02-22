@@ -440,6 +440,8 @@ Although there are a lot of package managers at both the language level and oper
       - docker images are often built using a /dockerfile/ which is a text file with imperative directives
       - docker images are often built on top of another base image which already has included a lot of needed parts, so that by choosing (or first building) a suitable base image, images can often be built with a relatively simple dockerfile.
       - once a docker image is built, the same running environment can be easily reproduced by starting another container using the same image
+      - docker images are organized in layers, where identical layers can be shared between images
+        - roughly, each directive in the dockerfile creates a layer
   - I will focus more on docker, as I do not have much experience with either flatpak or AppImage, but I think the comments apply similarly.
   - downsides:
     - although once the package or docker image is built, the user should have little trouble with dependencies, these tools do not provide much help with building the package or docker image
@@ -453,10 +455,64 @@ Although there are a lot of package managers at both the language level and oper
         - if the package versions are not carefully pinned, different versions may get installed at different times
       - if some packages are built from git repository, then a particular commit need to be used, otherwise, the latest version at the time of the build will be used
       - basically, dockerfile itself does not provide much help for reproducible build, it is up to the writer of the dockerfile to ensure as much reproducibility as possible
+    - since the layers are organized linearly, the potential sharing is limited unless the dockerfiles of the different images are carefully organized to have as much in common as possible from the top
+    - if some packages are built in building the docker image, some files or packages that are only needed in build time may be left over in the final image, if not carefully removed, making the image larger than necessary
+      - see for example [[https://pythonspeed.com/articles/smaller-python-docker-images/][Multi-stage builds \#1: Smaller images for compiled code]] and [[https://medium.com/the-artificial-impostor/smaller-docker-image-using-multi-stage-build-cb462e349968][Smaller Docker Image using Multi-Stage Build]] for using multi-stage build to reduce docker image size
     - of course, sometimes the intention is simply to build the latest version of some packages, without reproducibility requirements, then dockerfiles is sufficient
   - upsides of Guix:
-    - 
-    - TODO
+    - strong reproducibility guarantee
+      - package definition contains the hash of source file for package building
+      - isolated environment is used for package building, to make the build process as deterministic as possible
+      - therefore need only use the same channel description file and Guix time machine to get the exact set of package definitions
+      - together with a manifest file of desired packages, the desired set of packages and their dependencies can be exactly reproduced easily
+    - Guix can be used to produce docker image
+      - Guix can pack a set of packages and their dependencies (and nothing more, e.g. no leftover files only for building some packages) into various different formats, e.g. docker image, tarball and squashfs image, see the =-f= option in [[https://guix.gnu.org/manual/en/guix.html#Invoking-guix-pack][Invoking guix pack]] for details
+        - Guix can also build a vm-image, disk-image or docker image through =guix system vm-image=, =guix system disk-image= or =guix system docker-image= respectively, see [[https://guix.gnu.org/manual/en/html_node/Invoking-guix-system.html#Invoking-guix-system][Invoking guix system]] for details
+      - of course, this can be combined with Guix time machine through a channel file, and to use manifest files for the set of packages wanted
+      - therefore, we can use Guix to produce docker image instead of using dockerfile to enjoy better reproduciblity, and continue to use the surrounding infrastructure built around docker images, e.g. [[https://kubernetes.io/][Kubernetes]]
+      - therefore, Guix can be used in a complementary way to docker, if you do not wish to completely replace docker with Guix
+    - Guix also allow running programs in container:
+      - by using the isolation capability of the Linux kernel, Guix environment allows running programs in container basically in the same way as docker
+      - the user can also control the sharing of current working directory and the network
+      - see the =--container= or =-C= option and other related options in [[https://guix.gnu.org/manual/en/guix.html#Invoking-guix-environment][Invoking guix environment]] for details, but note that it requires a Linux kernel at least as new as version 3.19
+    - more fine grained sharing
+      - in Guix, each exact version of each package is identified by a hash (together with package name and version number), and identical packages are cached in the store and easily shared, either directly needed, or indirectly needed as a dependency of another package
+      - this sharing is automatic, so does not need careful arrangement of the user, and much more fine-grained than simple layer sharing in docker image
+      - there has been discussion among Guix developers to extend the sharing to individual files, so that identical files in different packages can also be shared
+
+** Use another functional package manager such as Nix
+   - [[https://en.wikipedia.org/wiki/Nix_package_manager][Nix]] origingated from Dolstra, E.'s PhD research [[https://nixos.org/~eelco/pubs/phd-thesis.pdf][The Purely Functional Software Deployment Model]], and refers to two related things:
+     - Nix is a dynamically typed, functional programming language with lazy evaluation, designed for implemented the Nix functional package manager
+     - Nix is a functional package manager implemented using the Nix programming language
+       - Nix can be used on Linux and MacOS
+       - Guix is inspired by Nix
+       - basically Guix is a reimplementation of the Nix package manager using Guile instead of the Nix programming lanuage, and in the process can correct some crufts and add some improvements
+   - [[https://nixos.org/][NixOS]] is a Linux distribution based on the Nix package manager, in the same way that Guix system is a Linux distribution based on the Guix package manager
+   - Nix is also a fine choice of functional package manager
+   - upsides of Nix / downsides of Guix:
+     - while Guix is only available in Linux, Nix is available in both Linux and MacOS. However, the supporting and testing of packages in MacOS may not be as good as in Linux
+     - since Nix was developed (first around 2004) much earlier than Guix (first release in 2013, see [[https://en.wikipedia.org/wiki/GNU_Guix#Releases][GNU Guix Releases]]), Nix has more packages
+   - downsides of Nix / upsides of Guix:
+     - the Nix package manager is implemented in the Nix programming language, which is a very specialized and niche programming language because it is not used in other contexts or purposes
+       - on the other hand, Guix is implemented in Guile, which is a dialect of Scheme. Scheme is a general purpose programming language useful in other contexts
+       - of course, for simple use, the user of Nix need not know much about the underlying implementation language, just as Guix user need not know Guile to simple uses
+       - but for more complicated uses, some knowledge of Nix (respectively Guile in the case of Guix) is needed, in which case learning a general purpose language may be considered more useful than learning a niche language, and the tools normally used for Scheme (e.g. editor support, REPL, debuggers) can be used for Guix hacking
+       - also, the data structures available in the Nix language is more limited, whereas Guix can use distinct data structures for different kinds of objects
+         - e.g. in Nix, each package is represented as a /function/ that takes inputs from a large mapping; but in Guix a package is represented as a first-class object in Scheme, forming an explicit dependency graphs, which easily allows different kinds of processing on the dependencies (e.g. substitute a particular package with a modified one; or plotting the dependency graph for visualization)
+     - Guix was developed much later than Nix, and therefore has a chance to improve on some early decisions of Nix after the years of real world usage experience
+       - e.g. the use of richer Scheme data structures in Guix for different kinds of objects
+       - e.g. the rough equivalent to =guix environment= in Nix is [[https://nixos.wiki/wiki/Development_environment_with_nix-shell][nix-shell]], which is originally intended to provide a shell where the build-time dependencies of a package is available for development and testing
+         - if you want to have some packages avaiable in the new shell, you can define a dummy package with the desired packages as build-time dependencies
+         - in contrast, =guix environment= allows specifying the list packages of which their dependencies are wanted, or the list of packages which themselves are wanted (the =--ad-hoc= option), or a mixture of the two
+           - apparently =nix-shell= now also allows this: https://nixos.org/manual/nix/unstable/command-ref/nix-shell.html
+         - also, to my knowledge =nix-shell= does not have the convenient time machien as =guix time-machine= to pinpoint the set of packages at particular commit of channels, but similar effect could be achieved by some Nix constructs in the =shell.nix= or =default.nix= file manually
+           - see [[https://nixos.wiki/wiki/FAQ/Pinning_Nixpkgs][Pinning Nixpkgs]] for examples of pinning versions of packages
+     - Nix relies more heavily on the shell for various build steps and occasionally causes trouble due to the escaping and substitutions in the shell, while Guix relies mostly on Scheme, so does not have issues with escaping
+   - see the following for more comparison between Nix and Guix:
+     - https://news.ycombinator.com/item?id=16490027
+     - https://sandervanderburg.blogspot.com/2012/11/on-nix-and-gnu-guix.html
+     - https://www.reddit.com/r/GUIX/comments/hxcq7d/guix_vs_nix/
+   - in short, both Nix and Guix are fine choices of functional package manager, and share a lot of similarities
 
 * A closer look at Guix
 ** How you might have designed Guix
@@ -464,12 +520,20 @@ Although there are a lot of package managers at both the language level and oper
 ** Overview of the different parts of Guix
 
 * Try out Guix
+** Installing Guix
+*** In qemu virtual machine
 
-** In qemu virtual machine
+*** Install on existing GNU/Linux distribution (possibly in a VM)
 
-** Install on existing GNU/Linux distribution (possibly in a VM)
+*** Install the Guix system, the GNU/Linux distribution built on the Guix package manager
 
-** Install the Guix system, the GNU/Linux distribution built on the Guix package manager
+** Brief summary of commonly used commands in Guix
+
+*** Basic usage of Guix
+
+*** Using Guix profiles
+
+*** Using Guix environment
 
 * A little demo
 
