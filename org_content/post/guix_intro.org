@@ -516,30 +516,323 @@ Although there are a lot of package managers at both the language level and oper
 
 * A closer look at Guix
 ** How you might have designed Guix
+TODO
 
 ** Overview of the different parts of Guix
+TODO
 
 * Try out Guix
 ** Installing Guix
 *** In qemu virtual machine
+TODO
 
 *** Install on existing GNU/Linux distribution (possibly in a VM)
+TODO
 
 *** Install the Guix system, the GNU/Linux distribution built on the Guix package manager
+TODO
 
 ** Brief summary of commonly used commands in Guix
+Here we list some common commands and usage of Guix, see [[https://guix.gnu.org/manual/en/guix.html#Getting-Started][Getting Started]] of the Guix manual for more details.
 
 *** Basic usage of Guix
+**** Help on Guix command
+     Help on the main usage, to see the available commands
+     #+begin_src shell
+       guix --help
+     #+end_src
+
+     Help on each command, e.g. the =guix package= command
+     #+begin_src shell
+       guix package --help
+     #+end_src
+**** Search package
+     #+begin_src shell
+       guix search keywords-here
+       # guix package -s keywords-here
+     #+end_src
+**** Show information of package(s)
+     #+begin_src shell
+       guix show package1 package2
+     #+end_src
+**** Update channel(s)
+     To update the channels so that all the package definitions are updated, but the packages themselves are not automatically updated.
+     #+begin_src shell
+       guix pull
+     #+end_src
+**** Install package(s)
+     You can install one or more packages in one transaction
+     #+begin_src shell
+       guix install package1 package2
+     #+end_src
+
+     An alternative way
+     #+begin_src shell
+       guix package -i package1 package2
+       # guix package --install package1 package2
+     #+end_src
+**** Remove package(s)
+     #+begin_src shell
+       guix remove package1 package2
+     #+end_src
+
+     An alternative way
+     #+begin_src shell
+       guix package -r package1 package2
+       # guix package --remove package1 package2
+     #+end_src
+**** Upgrade package(s)
+     #+begin_src shell
+       guix upgrade package1 package2
+     #+end_src
+
+     An alternative way
+     #+begin_src shell
+       guix package -u package1 package2
+       # guix package --upgrade package1 package2
+     #+end_src     
+**** Install/Remove/Upgrade package(s) in one transaction
+     You can also install/remove/upgrade package(s) in a single transaction, simply list the package with suitable options of =guix package=, =-i= for installing, =-r= for removing, =-u= for upgrading:
+     #+begin_src shell
+       guix package -i package1 -r package2 -u package3
+     #+end_src
+**** List installed packages
+     #+begin_src shell
+       guix package -I
+       # guix package --list-installed
+     #+end_src
+**** Rollback to the previous generation
+     #+begin_src shell
+       guix package --roll-back
+     #+end_src
+**** List generations
+     #+begin_src shell
+       guix package -l
+       # guix package --list-generations
+     #+end_src
+**** Switch generations
+     =PATTERN= can be a generation number or =+n= to go forward n generations; or =-n= to go backward n generations
+     #+begin_src shell
+       guix package -S PATTERN
+       # guix package --switch-generation=PATTERN
+     #+end_src
+
+     E.g. to go forward one generation
+     #+begin_src shell
+       guix package -S +1
+       # guix package --switch-generation=+1
+     #+end_src
+
+     E.g. to go backward one generation, similar to =--roll-back=, but if the specified generation does not exist, the current generation will not change
+     #+begin_src shell
+       guix package -S -1
+       # guix package --switch-generation=-1
+     #+end_src
+     
+*** Using manifest files to specify a list of packages
+    A manifest file is a Scheme file that evaluates to a list of guix
+    /packages/ (as Scheme object). A convenient way is to use the
+    =specifications->manifest= function which takes a list of package
+    names as strings and returns a list of the corresponding package
+    objects. It can be used in a few contexts such as =guix package=
+    to install packages, or =guix environment= to spawn a shell with
+    specified packages (see below), through the =-m= or =--manifest=
+    option. The advantage of a manifest file is that the list of
+    packages can be easily version controlled (e.g. with =git=).
+
+    An example of manifest file (let's say =pkgs.scm=) can be:
+    #+begin_src scheme
+      (specifications->manifest
+       '(
+         ;; R
+         "r"
+         "r-yaml"
+         "r-xgboost"
+         "r-tidymodels"
+         "r-tidyverse"
+         "r-survminer"
+         ))
+    #+end_src
+
+**** Install the list of packages in a manifest file
+     Note that the =-m= can be repeated multiple times with different
+     manifest files, and the lists will be concatenated and all will
+     be installed.
+
+     #+begin_src shell
+       guix package -m pkgs.scm
+     #+end_src
+
+     Note that a manifest file by itself only specifies the list of
+     packages by name, but not the exact versions. In order to
+     reproduce the exact versions of the list of packages, a manifest
+     file can be combined with =guix time-machine= as described below.
 
 *** Using Guix profiles
+    Default guix actions (install/upgrade/remove) operates on the
+    default /profile/ of each user (it is a symbolic link, default
+    location is at =$HOME/.guix-profile=), but each user and create
+    multiple profiles, activate the profiles as needed in similar ways
+    to Python /virtual environments/, and specify the profile to
+    operate on with each action through the =-p= (or =--profile=)
+    option (see [[https://guix.gnu.org/manual/en/guix.html#Invoking-guix-package][Invoking guix package]]):
+
+**** Create profile
+     The profile name is basically symbolic link(s) to the real
+     contents of the profile, and we can put it basically anywhere,
+     e.g. =~/my-ds-profile=. So it is up to you to organize the
+     profiles in a sensible way. It is also up to you to assign the
+     roles of different profiles, e.g. one profile for each project;
+     or different profiles for different domains of packages (e.g. one
+     profile for data analysis, one profile for entertainment, one
+     profile for graphics editing, etc).
+
+     A profile will be created when you perform guix package actions
+     specifying a profile, e.g. install =r= and =r-xgboost= in the
+     profile =~/my-ds-profile=, which need not exist before this
+     action:
+     #+begin_src shell
+       guix package -i r r-xgboost -p ~/my-ds-profile
+     #+end_src
+
+     Note that the created profile is not automatically activated, so
+     you retain the maximum flexibility to activate as needed, or
+     arrange to activate chosen profiles in each shell, see below.
+
+**** Install or upgrade or remove packages in a profile
+     Any usual =guix package= actions can be performed on a chosen
+     profile by using the =-p= (or =--profile=) option, e.g. to
+     install another package =r-yaml= to the profile =~/my-ds-profile=
+     just created:
+     #+begin_src shell
+       guix package -i r-yaml -p ~/my-ds-profile
+     #+end_src
+
+     E.g. install packages using a manifest file in a profile:
+     #+begin_src shell
+       guix package -m the_manifest_file -p path_to_profile
+     #+end_src
+**** List profiles
+     #+begin_src shell
+       guix package --list-profiles
+     #+end_src
+
+**** Activate a profile
+     Activating a profile amounts to modifying and exporting some
+     environment variables (e.g. =PATH=) in the /current shell/, which
+     is conveniently done by sourcing the =etc/profile= file under the
+     profile. The recommended way to activate a profile,
+     e.g. =~/my-ds-profile=, is to:
+     #+begin_src shell
+       GUIX_PROFILE="~/my-ds-profile" ; . "$GUIX_PROFILE"/etc/profile
+     #+end_src
+
+     Note that you can activate multiple profiles in the same shell as
+     appropriate. But there is no effective way to /deactivate/ a
+     profile in the same shell, other than exiting the shell. The
+     upside is that the global environment is not "polluted", and you
+     can start a new shell to activate a profile, then exit the shell
+     afterwards.
+
+     Also, you can automatically activate any profile in each spawn
+     shell by adding the activation to your shell initialization,
+     e.g. =.bash_profile= or =.bashrc=.
+**** Delete a profile
+     Somehow guix does not provide convenient command to delete a
+     profile. Deleting a profile involves removing the profile
+     symbolic link and its siblings that point to specific
+     generations. E.g. to delete the =~/my-ds-profile= profile created
+     above:
+     #+begin_src shell
+       rm ~/my-profile ~/my-profile-*-link
+     #+end_src
+
+**** Export current or chosen profile as a manifest file
+     You can export the list of packages of a profile (if not specified, will use the default profile) to a manifest file. E.g. to export the default profile:
+     #+begin_src shell
+       guix package --export-manifest > pkgs1.scm
+     #+end_src
+
+     E.g. to export the above =~/my-ds-profile= profile:
+     #+begin_src shell
+       guix package --export-manifest -p ~/my-ds-profile > pkgs2.scm
+     #+end_src
 
 *** Using Guix environment
+    TODO
+
+*** Using Guix time-machine
+    The =guix time-machine= can be used to execute other guix commands (e.g. =guix package=, or =guix environment=) at specified guix revisions (exact commits of the channels, which can be produced by =guix describe=)
+**** Install package in a particular revision
+     E.g. to install =emacs= at the revision in the file =channels.scm=
+     #+begin_src shell
+       guix time-machine -C channels.scm package -i emacs
+     #+end_src
+
+     The =channels.scm= could be obtained with =guix describe=, e.g.
+     #+begin_src shell
+       guix describe -f channels > channels.scm
+     #+end_src
+
+     The =channels.scm= will look something like (exact content of course depends on your channels)
+     #+begin_src scheme
+       (list (channel
+               (name 'nonguix)
+               (url "https://gitlab.com/nonguix/nonguix")
+               (commit
+                 "05fad6e54d497b7427ab7ea488210c7d43c3f676")
+               (introduction
+                 (make-channel-introduction
+                   "897c1a470da759236cc11798f4e0a5f7d4d59fbc"
+                   (openpgp-fingerprint
+                     "2A39 3FFF 68F4 EF7A 3D29  12AF 6F51 20A0 22FB B2D5"))))
+             (channel
+               (name 'guix)
+               (url "https://git.sjtu.edu.cn/sjtug/guix.git")
+               (commit
+                 "8a452e156e37568fdd59df169acb4f2092aeb3ac")
+               (introduction
+                 (make-channel-introduction
+                   "9edb3f66fd807b096b48283debdcddccfea34bad"
+                   (openpgp-fingerprint
+                     "BBB0 2DDF 2CEA F6A8 0D1D  E643 A2A0 6DF2 A33A 54FA")))))
+     #+end_src
+     Note that it is possible to hand-edit the file to the commit desired.
+2
+**** Use time-machine with environment
+     Assuming there is a manifest file =pkgs.scm= containing the needed packages, e.g.
+     #+begin_src scheme
+       (specifications->manifest
+        '(
+          ;; R
+          "r"
+          "r-yaml"
+          "r-xgboost"
+          "r-tidymodels"
+          "r-tidyverse"
+          "r-survminer"
+          ))
+     #+end_src
+
+     Then you can open a shell with these packages at the revisions specified in a =channels.scm=
+     #+begin_src shell
+       guix time-machine -C channels.scm -- environment --ad-hoc -m pkgs.scm
+       # in this new shell where the packages are visible, you can run anything as needed
+     #+end_src
+
+     And you can directly run things in the new shell, e.g. to run R:
+#+begin_src shell
+       guix time-machine -C channels.scm -- environment --ad-hoc -m pkgs.scm -- R
+     #+end_src
+
+*** Use Guix to create docker image
+TODO
 
 * A little demo
-
 ** Managing project dependencies
-
-** Use Guix to create docker image
+TODO
 
 * Other related topics
+TODO
   - use Guix in other OS than GNU/Linux
+** Guix system
