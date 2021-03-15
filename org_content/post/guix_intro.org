@@ -798,8 +798,8 @@ Here we list some common commands and usage of Guix, see [[https://guix.gnu.org/
                      "BBB0 2DDF 2CEA F6A8 0D1D  E643 A2A0 6DF2 A33A 54FA")))))
      #+end_src
      Note that it is possible to hand-edit the file to the commit desired.
-2
-**** Use time-machine with environment
+
+**** Use time-machine with guix environment
      Assuming there is a manifest file =pkgs.scm= containing the needed packages, e.g.
      #+begin_src scheme
        (specifications->manifest
@@ -828,8 +828,310 @@ Here we list some common commands and usage of Guix, see [[https://guix.gnu.org/
 *** Use Guix to create docker image
 TODO
 
-* A little demo
-** Managing project dependencies
+* A little demo of per-project dependency management
+
+** Demo settings
+Suppose we have two projects =~/guix_demo/proj1= and
+=~/guix_demo/proj2=, each with different channel file =channels.scm=
+and manifest file =pkgs.scm=, so the two projects uses different
+versions of R (proj1 at R 3.6.3, proj2 at R 4.0.3) and different R
+packages (at different versions).
+
+Below we spawn two shells that allows us to work on the two projects
+/at the same time/, and we show most of the output. If you try the
+commands, you should get the /same/ outputs.
+
+*** Sample files
+You may either manually create the following files, or clone the git
+repository [[https://github.com/peterloleungyau/guix_demo][https://github.com/peterloleungyau/guix_demo]] created for
+convenience (you should check that the files are the same as below).
+
+If you are in guix but somehow do not have =git= installed yet, you
+may either install it and then clone the repository by:
+#+begin_src shell
+  # install git
+  guix package -i git
+  # clone the repo
+  cd ~
+  git clone git@github.com:peterloleungyau/guix_demo.git
+#+end_src
+
+Or you may choose to use =guix environment= to tempoarily install
+=git= just for the cloning:
+#+begin_src shell
+  cd ~
+  guix environment --ad-hoc git -- git clone git@github.com:peterloleungyau/guix_demo.git
+#+end_src
+
+**** First project
+=~/guix_demo/proj1/channels.scm=:
+#+begin_src scheme
+  (list (channel
+         (name 'guix)
+         (url "https://git.savannah.gnu.org/git/guix.git")
+         (commit "89909327d017198969436237acc7c93823ff8147")))
+#+end_src
+
+=~/guix_demo/proj1/pkgs.scm=:
+#+begin_src scheme
+  (specifications->manifest
+   '(
+     ;; R
+     "r"
+     "r-yaml"
+     "r-xgboost"
+     "r-jsonlite"
+     ))
+#+end_src
+
+=~/guix_demo/proj1/fit1.R=
+#+begin_src R
+library(xgboost)
+
+data(iris)
+
+is_setosa <- as.numeric(iris$Species == "setosa")
+iris_x <- as.matrix(iris[c("Sepal.Length", "Sepal.Width",
+                           "Petal.Length", "Petal.Width")])
+iris_data <- xgb.DMatrix(data = iris_x, label = is_setosa)
+
+param <- list(max_depth = 3, eta = 1, nthread = 1,
+              objective = "binary:logistic", eval_metric = "auc")
+
+fit <- xgboost(params = param, data = iris_data, nrounds = 10)
+
+print(fit)
+
+#+end_src
+
+**** Second project
+=~/guix_demo/proj2/channels.scm=
+#+begin_src scheme
+  (list (channel
+         (name 'guix)
+         (url "https://git.savannah.gnu.org/git/guix.git")
+         (commit "9904a15a4c838362673c1affdbaf1e83d92fe8ff")))
+#+end_src
+
+=~/guix_demo/proj2/pkgs.scm=:
+#+begin_src scheme
+  (specifications->manifest
+   '(
+     ;; R
+     "r"
+     "r-glmnet"
+     "r-jsonlite"
+     ))
+#+end_src
+
+=~/guix_demo/proj2/fit2.R=
+#+begin_src R
+library(glmnet)
+
+data(iris)
+
+is_setosa <- as.numeric(iris$Species == "setosa")
+iris_x <- as.matrix(iris[c("Sepal.Length", "Sepal.Width",
+                           "Petal.Length", "Petal.Width")])
+
+fit <- glmnet(x = iris_x, y = is_setosa, family = "binomial")
+
+summary(fit)
+
+#+end_src
+
+** Open a shell for the first project
+First open a new shell with guix (could be the guix package manager on
+a Linux distribution, or the guix system) to create an environment for
+proj1:
+#+begin_src shell
+cd ~/guix_demo/proj1
+guix time-machine -C channels.scm -- environment --ad-hoc -m pkgs.scm -- R
+#+end_src
+
+Then wait a while for the R prompt to appear. The first time executing
+the above may take quite some time to download and/or build the
+packages. Subsequent run should be much faster after the needed
+packages are cached.
+
+In the R REPL, we load the few packages and show their versions:
+#+begin_src text
+R version 3.6.3 (2020-02-29) -- "Holding the Windsock"
+Copyright (C) 2020 The R Foundation for Statistical Computing
+Platform: x86_64-unknown-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(xgboost)
+> library(yaml)
+> library(jsonlite)
+> sessionInfo()
+R version 3.6.3 (2020-02-29)
+Platform: x86_64-unknown-linux-gnu (64-bit)
+
+Matrix products: default
+BLAS/LAPACK: /gnu/store/vax1vsg3ivf0r7j7n2xkbi1z3r0504l9-openblas-0.3.7/lib/libopenblasp-r0.3.7.so
+
+locale:
+[1] C
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] jsonlite_1.6.1  yaml_2.2.1      xgboost_1.0.0.2
+
+loaded via a namespace (and not attached):
+[1] compiler_3.6.3    magrittr_1.5      Matrix_1.2-18     tools_3.6.3      
+[5] stringi_1.4.6     grid_3.6.3        data.table_1.12.8 lattice_0.20-41  
+> 
+#+end_src
+
+** Open another shell for the second project
+Then /while keeping the first shell open/ with the R prompt, we open a
+new shell, then do the same for proj2:
+#+begin_src shell
+cd ~/guix_demo/proj2
+guix time-machine -C channels.scm -- environment --ad-hoc -m pkgs.scm -- R
+#+end_src
+
+In the R REPL, we also load the packages and show the versions:
+#+begin_src text
+R version 4.0.3 (2020-10-10) -- "Bunny-Wunnies Freak Out"
+Copyright (C) 2020 The R Foundation for Statistical Computing
+Platform: x86_64-unknown-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(glmnet)
+Loading required package: Matrix
+Loaded glmnet 4.1
+> library(jsonlite)
+> sessionInfo()
+R version 4.0.3 (2020-10-10)
+Platform: x86_64-unknown-linux-gnu (64-bit)
+
+Matrix products: default
+BLAS/LAPACK: /gnu/store/bs9pl1f805ins80xaf4s3n35a0x2lyq3-openblas-0.3.9/lib/libopenblasp-r0.3.9.so
+
+locale:
+[1] C
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] jsonlite_1.7.2 glmnet_4.1     Matrix_1.3-2  
+
+loaded via a namespace (and not attached):
+[1] compiler_4.0.3   survival_3.2-7   splines_4.0.3    codetools_0.2-18
+[5] grid_4.0.3       iterators_1.0.13 foreach_1.5.1    shape_1.4.5     
+[9] lattice_0.20-41 
+> 
+#+end_src
+
+** Close both shells
+   Since we directly run =R= when creating the guix environment, so
+   now quitting R with =q()= will also exit the spawn shell. So now we
+   can exit both shells spawn above.
+
+   If you now re-run the above commands, it should be much faster,
+   because the needed packages are cached, and guix need only check
+   that the packages needed are there.
+
+** Run R script for the first project
+We also run an R script:
+#+begin_src shell
+  cd ~/guix_demo/proj1
+  guix time-machine -C channels.scm -- environment --ad-hoc -m pkgs.scm -- Rscript fit1.R
+#+end_src
+
+The output:
+#+begin_src text
+[1]     train-auc:1.000000 
+[2]     train-auc:1.000000 
+[3]     train-auc:1.000000 
+[4]     train-auc:1.000000 
+[5]     train-auc:1.000000 
+[6]     train-auc:1.000000 
+[7]     train-auc:1.000000 
+[8]     train-auc:1.000000 
+[9]     train-auc:1.000000 
+[10]    train-auc:1.000000 
+##### xgb.Booster
+raw: 2.6 Kb 
+call:
+  xgb.train(params = params, data = dtrain, nrounds = nrounds, 
+    watchlist = watchlist, verbose = verbose, print_every_n = print_every_n, 
+    early_stopping_rounds = early_stopping_rounds, maximize = maximize, 
+    save_period = save_period, save_name = save_name, xgb_model = xgb_model, 
+    callbacks = callbacks)
+params (as set within xgb.train):
+  max_depth = "3", eta = "1", nthread = "1", objective = "binary:logistic", eval_metric = "auc", silent = "1"
+xgb.attributes:
+  niter
+callbacks:
+  cb.print.evaluation(period = print_every_n)
+  cb.evaluation.log()
+# of features: 4 
+niter: 10
+nfeatures : 4 
+evaluation_log:
+    iter train_auc
+       1         1
+       2         1
+---               
+       9         1
+      10         1
+#+end_src
+
+** Run R script for the second project
+We also run an R script:
+#+begin_src shell
+  cd ~/guix_demo/proj2
+  guix time-machine -C channels.scm -- environment --ad-hoc -m pkgs.scm -- Rscript fit2.R
+#+end_src
+
+The output:
+#+begin_src text
+Loading required package: Matrix
+Loaded glmnet 4.1
+           Length Class     Mode     
+a0          78    -none-    numeric  
+beta       312    dgCMatrix S4       
+df          78    -none-    numeric  
+dim          2    -none-    numeric  
+lambda      78    -none-    numeric  
+dev.ratio   78    -none-    numeric  
+nulldev      1    -none-    numeric  
+npasses      1    -none-    numeric  
+jerr         1    -none-    numeric  
+offset       1    -none-    logical  
+classnames   2    -none-    character
+call         4    -none-    call     
+nobs         1    -none-    numeric  
+#+end_src
+
 TODO
 
 * Other related topics
