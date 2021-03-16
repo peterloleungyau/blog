@@ -839,7 +839,8 @@ packages (at different versions).
 
 Below we spawn two shells that allows us to work on the two projects
 /at the same time/, and we show most of the output. If you try the
-commands, you should get the /same/ outputs.
+commands, you should get the same outputs, except possibly the locale
+output from R which depends on your local setting.
 
 *** Sample files
 You may either manually create the following files, or clone the git
@@ -849,18 +850,11 @@ convenience (you should check that the files are the same as below).
 If you are in guix but somehow do not have =git= installed yet, you
 may either install it and then clone the repository by:
 #+begin_src shell
-  # install git
-  guix package -i git
+  # install git, and also need ssh
+  guix package -i git openssh
   # clone the repo
   cd ~
-  git clone git@github.com:peterloleungyau/guix_demo.git
-#+end_src
-
-Or you may choose to use =guix environment= to tempoarily install
-=git= just for the cloning:
-#+begin_src shell
-  cd ~
-  guix environment --ad-hoc git -- git clone git@github.com:peterloleungyau/guix_demo.git
+  git clone https://github.com/peterloleungyau/guix_demo.git
 #+end_src
 
 **** First project
@@ -1130,6 +1124,88 @@ offset       1    -none-    logical
 classnames   2    -none-    character
 call         4    -none-    call     
 nobs         1    -none-    numeric  
+
+Call:  glmnet(x = iris_x, y = is_setosa, family = "binomial") 
+
+   Df  %Dev  Lambda
+1   0  0.00 0.43500
+2   1 11.32 0.39640
+3   1 20.79 0.36110
+4   1 28.87 0.32910
+5   1 35.87 0.29980
+6   1 41.99 0.27320
+7   1 47.38 0.24890
+8   1 52.17 0.22680
+9   1 56.44 0.20670
+10  1 60.27 0.18830
+11  1 63.72 0.17160
+12  1 66.83 0.15630
+13  1 69.64 0.14240
+14  1 72.19 0.12980
+15  1 74.51 0.11830
+16  2 76.69 0.10780
+17  2 78.74 0.09818
+18  2 80.61 0.08946
+19  2 82.30 0.08151
+20  2 83.83 0.07427
+21  2 85.23 0.06767
+22  2 86.49 0.06166
+23  2 87.65 0.05618
+24  2 88.70 0.05119
+25  2 89.67 0.04664
+26  2 90.54 0.04250
+27  2 91.34 0.03872
+28  2 92.08 0.03528
+29  2 92.74 0.03215
+30  2 93.35 0.02929
+31  2 93.91 0.02669
+32  2 94.42 0.02432
+33  2 94.89 0.02216
+34  2 95.32 0.02019
+35  2 95.71 0.01840
+36  2 96.07 0.01676
+37  2 96.40 0.01527
+38  2 96.70 0.01392
+39  2 96.97 0.01268
+40  2 97.22 0.01155
+41  2 97.45 0.01053
+42  2 97.67 0.00959
+43  2 97.86 0.00874
+44  2 98.04 0.00796
+45  2 98.20 0.00726
+46  3 98.35 0.00661
+47  3 98.49 0.00602
+48  3 98.62 0.00549
+49  3 98.73 0.00500
+50  3 98.84 0.00456
+51  3 98.94 0.00415
+52  3 99.03 0.00378
+53  3 99.11 0.00345
+54  3 99.19 0.00314
+55  3 99.25 0.00286
+56  3 99.32 0.00261
+57  3 99.37 0.00238
+58  3 99.43 0.00216
+59  3 99.48 0.00197
+60  3 99.52 0.00180
+61  3 99.56 0.00164
+62  3 99.60 0.00149
+63  3 99.63 0.00136
+64  3 99.66 0.00124
+65  3 99.69 0.00113
+66  3 99.72 0.00103
+67  3 99.74 0.00094
+68  3 99.76 0.00085
+69  3 99.78 0.00078
+70  3 99.80 0.00071
+71  3 99.82 0.00065
+72  3 99.83 0.00059
+73  3 99.85 0.00054
+74  3 99.86 0.00049
+75  3 99.87 0.00045
+76  3 99.88 0.00041
+77  3 99.89 0.00037
+78  3 99.90 0.00034
 #+end_src
 
 TODO
