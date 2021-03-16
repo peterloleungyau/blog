@@ -522,14 +522,115 @@ TODO
 TODO
 
 * Try out Guix
-** Installing Guix
-*** In qemu virtual machine
+** Get Guix
+Refer to [[https://guix.gnu.org/manual/en/guix.html#System-Installation][System Installation]] for details on getting guix running
+(either the guix system, or just the guix package manager), we brifely
+summarize the main ways below. At the time of writing, the guix
+version is 1.2.0.
+
+*** Run guix system in qemu virtual machine with pre-made image
+Running guix in a virtual machine is probably the easiest way to
+try it out. [[https://www.qemu.org/][Qemu]] is a generic and open source emulator and virtualizer
+that can be used to run a pre-made image.
+
+Refer to [[https://guix.gnu.org/manual/en/guix.html#Running-Guix-in-a-VM][Running Guix in a Virtual Machine]] for more details. At the
+time of writing, the guix version of the image is 1.2.0 for x86_64
+architecture. We summarize the steps below:
+  - install qemu following the instructions at [[https://www.qemu.org/download/][https://www.qemu.org/download/]]
+  - download the [[https://ftp.gnu.org/gnu/guix/guix-system-vm-image-1.2.0.x86_64-linux.xz][guix-system-vm-image-1.2.0.x86_64-linux.xz]] compressed image
+  - decompress to get =guix-system-vm-image-1.2.0.x86_64-linux=
+    #+begin_src shell
+      xz -d guix-system-vm-image-1.2.0.x86_64-linux.xz
+    #+end_src
+  - invoke qemu on the image with
+    #+begin_src shell
+      qemu-system-x86_64 \
+         -nic user,model=virtio-net-pci \
+         -enable-kvm -m 1024 \
+         -device virtio-blk,drive=myhd \
+         -drive if=none,file=./guix-system-vm-image-1.2.0.x86_64-linux,id=myhd
+    #+end_src
+  - you can change arguments such as =-m= as appropriate to set the
+    amount of memory desired. Note that you may need to tweak the
+    arguments of invoking qemu a bit, depending on you host system.
+    E.g. in macOS Mojave 10.14.6, I need to use the following:
+    #+begin_src shell
+      qemu-system-x86_64 \
+         -nic user,model=virtio-net-pci \
+         -m 1024 \
+         -device virtio-blk,drive=myhd \
+         -drive if=none,file=./guix-system-vm-image-1.2.0.x86_64-linux,id=myhd \
+         -accel hvf
+    #+end_src
+  - wait for a while, then you will be in the default xfce desktop of
+    a guix system, i.e. a GNU/Linux distribution built around
+    guix. But note that by default, not many packages are installed,
+    e.g. even a web browser is not installed by default. You may
+    install them as needed, e.g. you may install =icecat= (the GNU
+    version of Firefox browser) by:
+    #+begin_src shell
+      guix package -i icecat
+    #+end_src
+
+*** Install the guix system, the GNU/Linux distribution built on the Guix package manager
+You can also install a guix system in either a virtual machine or bare metal.
+
+**** Get the guix system install ISO image
+Refer to [[https://guix.gnu.org/manual/en/guix.html#USB-Stick-and-DVD-Installation][USB Stick and DVD Installation]]
+  - download the compressed 64-bit ISO from https://ftp.gnu.org/gnu/guix/guix-system-install-1.2.0.x86_64-linux.iso.xz
+    - you may instead get the compressed 32-bit ISO from https://ftp.gnu.org/gnu/guix/guix-system-install-1.2.0.i686-linux.iso.xz
+  - optionally verify the authenticity of the image:
+    - get the sig file for 64-bit ISO and verify (change =x86_64-linux= to =i686-linux= if you download the 32-bit ISO)
+      #+begin_src shell
+        wget https://ftp.gnu.org/gnu/guix/guix-system-install-1.2.0.x86_64-linux.iso.xz.sig
+        gpg --verify guix-system-install-1.2.0.x86_64-linux.iso.xz.sig
+      #+end_src
+    - if then above command fails, then import the gpg public key first and then re-run the above verification:
+      #+begin_src shell
+        wget https://sv.gnu.org/people/viewgpg.php?user_id=15145 \
+              -qO - | gpg --import -
+      #+end_src
+  - decompress the image with =xz -d= command to get =guix-system-install-1.2.0.x86_64-linux.iso= 
+    #+begin_src shell
+      xz -d guix-system-install-1.2.0.x86_64-linux.iso.xz
+    #+end_src
+
+**** Install in a fresh qemu virtual machine
+Refer to [[https://guix.gnu.org/manual/en/guix.html#Installing-Guix-in-a-VM][Installing Guix in a Virtual Machine]]
+  - install qemu following the instructions at [[https://www.qemu.org/download/][https://www.qemu.org/download/]]
+  - create a fresh disk image in qcow2 format, where you can choose an
+    appropriate size, e.g. 50G (the created image file will initially
+    be much smaller, but will grow in size when it is filled up)
+    #+begin_src shell
+      qemu-img create -f qcow2 guix-system.img 50G
+    #+end_src
+  - boot the installation ISO image in the vm:
+    #+begin_src shell
+      qemu-system-x86_64 -m 1024 -smp 1 -enable-kvm \
+        -nic user,model=virtio-net-pci -boot menu=on,order=d \
+        -drive file=guix-system.img \
+        -drive media=cdrom,file=guix-system-install-1.2.0.system.iso
+    #+end_src
+  - note that you may need to tweak the arguments to
+    =qemu-system-x86_64= depending on your host system, e.g. you may
+    need to replace =-enable-kvm= with =-accel hvf= in macOS. The
+    =-enable-kvm= is optional anyway, but will significantly improve
+    performance.
+  - note the few things mentioned in https://guix.gnu.org/manual/en/guix.html#Preparing-for-Installation
+    - The graphical installer is available on TTY1.
+    - You can obtain root shells on TTYs 3 to 6 by hitting ctrl-alt-f3, ctrl-alt-f4, etc.
+    - TTY2 shows this documentation and you can reach it with ctrl-alt-f2.
+    - Documentation is browsable using the Info reader commands (see [[https://www.gnu.org/software/texinfo/manual/info-stnd/info-stnd.html#Top][Stand-alone GNU Info]]).
+    - The installation system runs the GPM mouse daemon, which allows you to select text with the left mouse button and to paste it with the middle button.
+  - for simplicity, choose [[https://guix.gnu.org/manual/en/guix.html#Guided-Graphical-Installation][Guided Graphical Installation]] to finish the installation
+
+**** Install in other types of virtual machine
 TODO
 
-*** Install on existing GNU/Linux distribution (possibly in a VM)
+**** Install on bare metal
 TODO
 
-*** Install the Guix system, the GNU/Linux distribution built on the Guix package manager
+*** Install the guix package manager in existing GNU/Linux distribution (possibly in a VM)
 TODO
 
 ** Brief summary of commonly used commands in Guix
@@ -1215,3 +1316,7 @@ TODO
 TODO
   - use Guix in other OS than GNU/Linux
 ** Guix system
+
+** Custom guix channels
+
+** Guix deploy
