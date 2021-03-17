@@ -571,9 +571,15 @@ architecture. We summarize the steps below:
     #+begin_src shell
       guix package -i icecat
     #+end_src
+  - optional: since the command for invoking qemu can be very long,
+    you may put it into a shell script to more conveniently invoke the
+    vm
+  - optional: you may use other front-ends (some are GUI) to more
+    conveniently manage qemu vm, see
+    https://wiki.archlinux.org/index.php/Libvirt#Client
 
 *** Install the guix system, the GNU/Linux distribution built on the Guix package manager
-You can also install a guix system in either a virtual machine or bare metal.
+You can also install a guix system in either a virtual or physical machine.
 
 **** Get the guix system install ISO image
 Refer to [[https://guix.gnu.org/manual/en/guix.html#USB-Stick-and-DVD-Installation][USB Stick and DVD Installation]]
@@ -623,15 +629,109 @@ Refer to [[https://guix.gnu.org/manual/en/guix.html#Installing-Guix-in-a-VM][Ins
     - Documentation is browsable using the Info reader commands (see [[https://www.gnu.org/software/texinfo/manual/info-stnd/info-stnd.html#Top][Stand-alone GNU Info]]).
     - The installation system runs the GPM mouse daemon, which allows you to select text with the left mouse button and to paste it with the middle button.
   - for simplicity, choose [[https://guix.gnu.org/manual/en/guix.html#Guided-Graphical-Installation][Guided Graphical Installation]] to finish the installation
+  - after the installation, you can get into guix with the default
+    xfce desktop whenever you invoke the vm
+  - optional: since the command for invoking qemu can be very long,
+    you may put it into a shell script to more conveniently invoke the
+    vm
+  - optional: you may use other front-ends (some are GUI) to more
+    conveniently manage qemu vm, see
+    https://wiki.archlinux.org/index.php/Libvirt#Client
 
-**** Install in other types of virtual machine
-TODO
+**** Install in other virtual machine
+You can also install guix system using the ISO in other types of
+virtual machines such as:
+  - [[https://www.virtualbox.org/][VirtualBox]] (free)
+  - [[https://www.parallels.com/][Parallels]] (proprietary)
+  - [[https://www.vmware.com/][VmWare]] (proprietary)
+  - and many others, see https://en.wikipedia.org/wiki/Comparison_of_platform_virtualization_software
 
-**** Install on bare metal
-TODO
+Similar to installing in qemu vm:
+  - note the few things mentioned in https://guix.gnu.org/manual/en/guix.html#Preparing-for-Installation
+    - The graphical installer is available on TTY1.
+    - You can obtain root shells on TTYs 3 to 6 by hitting ctrl-alt-f3, ctrl-alt-f4, etc.
+    - TTY2 shows this documentation and you can reach it with ctrl-alt-f2.
+    - Documentation is browsable using the Info reader commands (see [[https://www.gnu.org/software/texinfo/manual/info-stnd/info-stnd.html#Top][Stand-alone GNU Info]]).
+    - The installation system runs the GPM mouse daemon, which allows you to select text with the left mouse button and to paste it with the middle button.
+  - for simplicity, choose [[https://guix.gnu.org/manual/en/guix.html#Guided-Graphical-Installation][Guided Graphical Installation]] to finish the installation
+  - after the installation, you can get into guix with the default
+    xfce desktop whenever you invoke the vm
+
+**** Install on physical machine
+Installing guix system on physical machine is similar to installing in
+virtual machine, except that you need to transfer the ISO image to
+either a USB stick or a DVD. It is recommended that you try to install
+in a virtual machine first to get familiar with the process, see the
+preceding subsection.
+
+Refer to https://guix.gnu.org/manual/en/guix.html#USB-Stick-and-DVD-Installation
+***** Copying to a USB Stick
+  - Insert a USB stick of 1 GiB or more into your machine
+  - if on a Linux machine, 
+    - determine its device name, e.g. =/dev/sdb= or =/dev/sdc=. Note
+      that it is VERY important to determine the correct device name,
+      otherwise you may mistakenly wipe out another device.
+    - assuming that the USB stick is known as =/dev/sdX=, copy the image
+      with:
+      #+begin_src shell
+        # access to /dev/sdX usually requires root privilege
+        # also, /dev/sdX should NOT be mount
+        sudo dd if=guix-system-install-1.2.0.x86_64-linux.iso of=/dev/sdX status=progress
+        sudo sync
+      #+end_src
+  - if on a different OS or you prefer to use a GUI, you can try these programs:
+    - https://www.tipard.com/resource/burn-iso-to-usb.html
+    - https://techrrival.com/best-usb-bootable-softwares/
+
+***** Burning on a DVD
+  - Insert a blank DVD into your machine
+  - if on a Linux machine, 
+    - determine its device name. Note that it is VERY important to
+      determine the correct device name, otherwise you may mistakenly
+      wipe out another device.
+    - assuming that the DVD drive is known as =/dev/srX=, copy the image
+      with:
+      #+begin_src shell
+        # access to /dev/srX usually requires root privilege
+        growisofs -dvd-compat -Z /dev/srX=guix-system-install-1.2.0.x86_64-linux.iso
+      #+end_src
+  - if on a different OS or you prefer to use a GUI, you can try these programs:
+    - https://en.wikipedia.org/wiki/List_of_ISO_image_software
+    - https://dvdcreator.wondershare.com/dvd-tips/best-free-iso-burner.html
+
+***** Installtion
+Similar to installing in qemu vm:
+  - note the few things mentioned in https://guix.gnu.org/manual/en/guix.html#Preparing-for-Installation
+    - The graphical installer is available on TTY1.
+    - You can obtain root shells on TTYs 3 to 6 by hitting ctrl-alt-f3, ctrl-alt-f4, etc.
+    - TTY2 shows this documentation and you can reach it with ctrl-alt-f2.
+    - Documentation is browsable using the Info reader commands (see [[https://www.gnu.org/software/texinfo/manual/info-stnd/info-stnd.html#Top][Stand-alone GNU Info]]).
+    - The installation system runs the GPM mouse daemon, which allows you to select text with the left mouse button and to paste it with the middle button.
+  - for simplicity, choose [[https://guix.gnu.org/manual/en/guix.html#Guided-Graphical-Installation][Guided Graphical Installation]] to finish the installation
+  - after the installation, you can get into guix with the default
+    xfce desktop
 
 *** Install the guix package manager in existing GNU/Linux distribution (possibly in a VM)
-TODO
+Besides installing guix system, you may also choose to only install
+guix package manager on top of a GNU/Linux distribution (named
+"foreign distro in guix documentation", which need not be a guix
+system, e.g. Debian, Ubuntu, Fedora, ArchLinux, etc).
+
+Refer to [[https://guix.gnu.org/manual/en/guix.html#Binary-Installation][Binary Installation]]
+  - the easiest way is to use the shell installer script:
+    - download and execute the shell installer script
+      #+begin_src shell
+        cd /tmp
+        wget https://git.savannah.gnu.org/cgit/guix.git/plain/etc/guix-install.sh
+        chmod +x guix-install.sh
+        ./guix-install.sh
+      #+end_src
+    - after that, check [[https://guix.gnu.org/manual/en/guix.html#Application-Setup][Application Setup]] for extra configuration you might need
+  - alternatively, you may choose to install the guix package from the
+    package manager of your distribution, if there is one, e.g.:
+    - ArchLinux: https://wiki.archlinux.org/index.php/Guix#AUR_Package_Installation
+    - Slackware: https://slackbuilds.org/repository/14.1/system/guix/
+    - Fedora: https://copr.fedorainfracloud.org/coprs/lantw44/guix/
 
 ** Brief summary of commonly used commands in Guix
 Here we list some common commands and usage of Guix, see [[https://guix.gnu.org/manual/en/guix.html#Getting-Started][Getting Started]] of the Guix manual for more details.
