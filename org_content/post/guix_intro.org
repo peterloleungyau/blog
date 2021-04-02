@@ -719,13 +719,14 @@ system, e.g. Debian, Ubuntu, Fedora, ArchLinux, etc).
 
 Refer to [[https://guix.gnu.org/manual/en/guix.html#Binary-Installation][Binary Installation]]
   - the easiest way is to use the shell installer script:
-    - download and execute the shell installer script
+    - download and execute the shell installer script as root
       #+begin_src shell
         cd /tmp
         wget https://git.savannah.gnu.org/cgit/guix.git/plain/etc/guix-install.sh
         chmod +x guix-install.sh
         ./guix-install.sh
       #+end_src
+      - you may be asked to import gpg key, if so, just follow the instructions, then re-run the installer script
     - after that, check [[https://guix.gnu.org/manual/en/guix.html#Application-Setup][Application Setup]] for extra configuration you might need
   - alternatively, you may choose to install the guix package from the
     package manager of your distribution, if there is one, e.g.:
@@ -960,7 +961,99 @@ Here we list some common commands and usage of Guix, see [[https://guix.gnu.org/
      #+end_src
 
 *** Using Guix environment
-    TODO
+The =guix environment= command allows you to spawn a new shell with
+certain packages (or their dependencies) accessible (by modifying some
+environment variables, e.g. =PATH=), /without/ changing your other
+profiles; and you can optionally either just spawn such a shell, or
+execute a command inside this shell. Essentially a temporary profile
+is created (for the set of packages wanted), so that you do not
+"pollute" your other environment. The needed packages will be
+automatically built if they are not yet in the cached store. So =guix
+environment= is a very convenient way to reproduce a set of packages
+in a clean way. For example, this can be used to manage per-project
+dependencies, as we will see in the demo section.
+
+Note that when in a shell spawn by =guix environment=, the environment
+variable =GUIX_ENVIRONMENT= will have the value of the path to the
+temporary profile for the environment, and you can detect it to change
+the shell prompt, e.g. add this to your .bashrc:
+#+begin_src shell
+  if [ -n "$GUIX_ENVIRONMENT" ]
+  then
+    export PS1="\u@\h \w [dev]\$ "
+  fi
+
+#+end_src
+
+**** Spawn a shell with dependencies of some packages
+     E.g. to get the dependencies of =emacs= and =vim=:
+     #+begin_src shell
+       # guix environment pkg1 pkg2 ...
+       guix environment emacs vim
+     #+end_src
+
+     Can also use =-m= (possibly multiple times) to specify manifest file(s):
+     #+begin_src shell
+       # guix environment pkg1 pkg2 ... -m pkgs1.scm -m pkgs2.scm ...
+       guix environment kmahjongg -m pkgs.scm
+     #+end_src
+
+     Also check out =--load= option for loading a file for package.
+
+**** Spawn a shell with some packages themselves
+     E.g. to get game =kmahjongg= itself:
+     #+begin_src shell
+       # guix environment --ad-hoc pkg1 pkg2 ...
+       guix environment --ad-hoc kmahjongg
+     #+end_src
+
+     Can also use =-m= (possibly multiple times) to specify manifest file(s):
+     #+begin_src shell
+       # guix environment --ad-hoc pkg1 pkg2 ... -m pkgs1.scm -m pkgs2.scm ...
+       guix environment --ad-hoc kmahjongg -m pkgs.scm
+     #+end_src
+
+     Also check out =--load= option for loading a file for package.
+
+**** Spawn a shell and directly execute some commands in it
+     e.g. to get =R= and start it
+     #+begin_src shell
+       # guix environment --ad-hoc pkg1 ... -- pkg1
+       guix environment --ad-hoc r -- R
+     #+end_src
+
+**** Spawn a shell where original environment variables are unset
+     Use the =--pure= option, e.g. to get R
+     #+begin_src shell
+       # show all environment variables currently defined
+       env
+       # guix environment --pure --ad-hoc pkg1 ... -- pkg1
+       guix environment --pure --ad-hoc r
+       # then in the new shell, the PATH is reduced to only those for the
+       # package, and even basic shell utilities are not in the PATH unless
+       # they are added as one of the packages.
+       echo $PATH
+     #+end_src
+
+     You may use the =--preserve= to control the environment variables
+     to keep, check =guix environment --help= for more details.
+
+**** Spawn a shell to run things in an isolated environment
+     For further isolation, can use the =--container= option to run in
+    a container where only the gnu store and (by default) the current
+    directory are mounted. You may check =guix environment --help= for
+    other relevant options, e.g. =--expose=, =--network=, =--share=,
+    =--no-cwd=, =--user=.
+
+     E.g. to run R in a container:
+     #+begin_src shell
+       # guix environment --ad-hoc pkg1 ... -- pkg1
+       guix environment --container --ad-hoc r -- R
+     #+end_src
+
+     But seems this feature is not very mature yet, it gives error
+     when I try the above command (on guix (GNU Guix)
+     510e24f973a918391d8122fd6ad515c0567bf23e).
 
 *** Using Guix time-machine
     The =guix time-machine= can be used to execute other guix commands (e.g. =guix package=, or =guix environment=) at specified guix revisions (exact commits of the channels, which can be produced by =guix describe=)
