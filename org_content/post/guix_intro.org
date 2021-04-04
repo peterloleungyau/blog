@@ -125,12 +125,15 @@ We first list out some concepts related to packages and dependency:
          - in many package manager (and default in dynamic library in Linux), minor versions are considered backward compatible, and for each package of the same major version, only the newest minor version is kept/used
          - if both package A and B depend on a package C, but A and B needs different minor versions of C to work correctly, then A and B have conflicts
          - this may happen if B is updated to B1 causing C to be updated to C1, therefore causing A to break, even if the older versions of the 3 packages previously coexisted and worked correctly.
+
            #+CAPTION: Dependency before updating B
            [[file:guix_intro/dep_before_update.png]]
 
            #+CAPTION: Dependency after updating B
            [[file:guix_intro/dep_after_update.png]]
+
          - in this case, it is clear that if we just let A to use the old C, and the new B1 to use the new C1, then A can work as before, and B can still be updated to B1.
+
            #+CAPTION: Ideal dependency after updating B
            [[file:guix_intro/dep_ideal_after_update.png]]
 
