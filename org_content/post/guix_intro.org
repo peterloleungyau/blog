@@ -127,15 +127,15 @@ We first list out some concepts related to packages and dependency:
          - this may happen if B is updated to B1 causing C to be updated to C1, therefore causing A to break, even if the older versions of the 3 packages previously coexisted and worked correctly.
 
            #+CAPTION: Dependency before updating B
-           [[file:guix_intro/dep_before_update.png]]
+           [[file:dep_before_update.png]]
 
            #+CAPTION: Dependency after updating B
-           [[file:guix_intro/dep_after_update.png]]
+           [[file:dep_after_update.png]]
 
          - in this case, it is clear that if we just let A to use the old C, and the new B1 to use the new C1, then A can work as before, and B can still be updated to B1.
 
            #+CAPTION: Ideal dependency after updating B
-           [[file:guix_intro/dep_ideal_after_update.png]]
+           [[file:dep_ideal_after_update.png]]
 
    - ways that code of package A can break if a dependency B updates to a supposingly /backward compatible/ minor version:
      - although most of the time updating a minor version does not cause problem, they might still cause breakage
@@ -260,7 +260,7 @@ Although there are a lot of package managers at both the language level and oper
       - e.g. =r-tidyverse= is the Guix package for the R [[https://www.tidyverse.org/][tidyverse]] package, which depends on many other R packages, all of can also be managed by Guix
       - e.g. =python-numpy= is the Guix package for the Python [[https://numpy.org/][numpy]] package, which depends on =gfortran@7.5.0= (version 7.5.0), =lapack@3.9.0=, =openblas@0.3.9=, =python-cython@0.29.21= and =python-pytest@5.3.5=
       - e.g. =r-xml= is the Guix package for the R [[https://cran.microsoft.com/web/packages/XML/index.html][xml]] package, which (as of this writing, at version 3.99-0.5) depends on libxml2@2.9.10, pkg-config@0.29.2 and zlib@1.2.11, but these libraries are managed by Guix in the same way as any other dependencies
-      - the philosophy of Guix is really to manage as many dependencies as sensible, e.g. =emacs-projectile= is the Guix package for the [[https://docs.projectile.mx/projectile/index.html][projectile]] package of the [[Emacs][GNU Emacs]] text editor
+      - the philosophy of Guix is really to manage as many dependencies as sensible, e.g. =emacs-projectile= is the Guix package for the [[https://docs.projectile.mx/projectile/index.html][projectile]] package of the [[https://www.gnu.org/software/emacs/][GNU Emacs]] text editor
       - Guix can also mange R itself as a package, so the R version can also be managed just as any other packages in your project
       - therefore, Guix can handle dependencies across multiple programming language, and mixing with system level dependencies
     - all Guix packages are put in =/gnu/store=, with a path having the name and a hash, e.g. =/gnu/store/9naz5xl42amla3ph860yxxqrk9420nvr-r-tidyverse-1.3.0= for the =r-tidyverse= currently on my system
@@ -405,7 +405,7 @@ Although there are a lot of package managers at both the language level and oper
             - working with Python project, or any other language is similar, just make sure you have the needed packages in the =pkgs.scm= file.
             - one thing that I have not yet investigated deeply enough:
               - of course, we usually use some development tools such as IDE or text editor that are usually personal preferences, so they should not be put into =pkgs.scm=, but should better be installed in the default user profile
-              - e.g. for R, common choices are [[https://rstudio.com/][RStudio]], [[https://www.gnu.org/software/emacs/][Emacs]] with [[https://ess.r-project.org/][ESS]], [[https://www.vim.org/][Vim]], [[https://code.visualstudio.com/][VSCode]]
+              - e.g. for R, common choices are [[https://rstudio.com/][RStudio]], [[https://ess.r-project.org/][Emacs ESS]] with [[https://ess.r-project.org/][ESS]], [[https://www.vim.org/][Vim]], [[https://code.visualstudio.com/][VSCode]]
               - you would need some way to make these tools see and use the R in the newly spawned shell, which may need some tweaking, but I have not yet spent the time to investigate this
           - e.g. another use is in running batch jobs, e.g. a [[https://www.jenkins.io/][Jenkins]] job:
             - suppose we have the same =pkgs.scm= and =channels.scm= in the project root
