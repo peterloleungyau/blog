@@ -125,26 +125,14 @@ We first list out some concepts related to packages and dependency:
          - in many package manager (and default in dynamic library in Linux), minor versions are considered backward compatible, and for each package of the same major version, only the newest minor version is kept/used
          - if both package A and B depend on a package C, but A and B needs different minor versions of C to work correctly, then A and B have conflicts
          - this may happen if B is updated to B1 causing C to be updated to C1, therefore causing A to break, even if the older versions of the 3 packages previously coexisted and worked correctly.
-           #+begin_src dot
-             digraph before_update {
-               C -> A;
-               C -> B;
-             }
-           #+end_src
+           #+CAPTION: Dependency before updating B
+           [[file:guix_intro/dep_before_update.png]]
 
-           #+begin_src dot
-             digraph after_update {
-               C1 -> A;
-               C1 -> B1;
-             }
-           #+end_src
+           #+CAPTION: Dependency after updating B
+           [[file:guix_intro/dep_after_update.png]]
          - in this case, it is clear that if we just let A to use the old C, and the new B1 to use the new C1, then A can work as before, and B can still be updated to B1.
-           #+begin_src dot
-             digraph better_case {
-               C -> A;
-               C1 -> B1;
-             }
-           #+end_src
+           #+CAPTION: Ideal dependency after updating B
+           [[file:guix_intro/dep_ideal_after_update.png]]
 
    - ways that code of package A can break if a dependency B updates to a supposingly /backward compatible/ minor version:
      - although most of the time updating a minor version does not cause problem, they might still cause breakage
@@ -1051,9 +1039,12 @@ the shell prompt, e.g. add this to your .bashrc:
        guix environment --container --ad-hoc r -- R
      #+end_src
 
-     But seems this feature is not very mature yet, it gives error
-     when I try the above command (on guix (GNU Guix)
-     510e24f973a918391d8122fd6ad515c0567bf23e).
+     But seems this feature is not very mature yet. When I try the
+     above command (on guix (GNU Guix)
+     510e24f973a918391d8122fd6ad515c0567bf23e).  it gives this error:
+     #+begin_src text
+       guix environment: error: mount: mount "/home/peter" on "/tmp/guix-directory.QDXQmx//home/peter": Invalid argument
+     #+end_src
 
 *** Using Guix time-machine
     The =guix time-machine= can be used to execute other guix commands (e.g. =guix package=, or =guix environment=) at specified guix revisions (exact commits of the channels, which can be produced by =guix describe=)
