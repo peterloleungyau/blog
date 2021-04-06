@@ -5,7 +5,7 @@
 
 #+TITLE: Guix to manage project dependency
 
-#+DATE: 2021-01-02
+#+DATE: 2021-04-05
 
 #+HUGO_TAGS: "Guix" "Functional Package Manager" "Reproducibility"
 #+HUGO_CATEGORIES: "Guix"
@@ -1114,7 +1114,91 @@ the shell prompt, e.g. add this to your .bashrc:
      #+end_src
 
 *** Use Guix to create docker image
-TODO
+    Guix can produce a docker image of a set of packages through =guix
+pack= command, see [[https://guix.gnu.org/manual/en/html_node/Invoking-guix-pack.html#Invoking-guix-pack][Invoking guix pack]] and =guix pack --help= for more
+description. In fact, =guix pack= can produce other formats, see =guix
+pack --list-formats= for the possible formats.
+
+**** Produce a docker image of a list of packages
+     The set of packages can be specified as a list when calling =guix pack=.
+     E.g. to get =R= and =xgboost=:
+     #+begin_src shell
+       # guix pack -f docker -S /bin=bin pkg1 pkg2 ...
+       guix pack -f docker -S /bin=bin r r-xgboost
+     #+end_src
+     The =-S= option creates a symbolic link to file or directory
+     under the profile (which is otherwise a path with long hash),
+     provided for convenience. In the above example, a symbolic will
+     be created at =/bin= pointing to the =bin= directory in the
+     profile (which will be something like
+     =/gnu/store/...-profile/bin=), then the user can start =R= with
+     =/bin/R=.
+
+     The path to the created tar.gz (something like
+     =/gnu/store/...-docker-pack.tar.gz= with a long hash) file is
+     output to stdout of the =guix pack= call, so we can get it like:
+     #+begin_src shell
+       PACKLOC=$(guix pack -f docker -S /bin=bin r r-xgboost)
+       # then can easily copy it elsewhere
+     #+end_src
+
+     Then the file produced is a docker image that can be loaded into
+     docker:
+     #+begin_src shell
+       # assume the file name is shortened docker-pack.tar.gz
+       docker load < docker-pack.tar.gz
+       # docker will show the image tag after loading
+       # the tag of the image is generated from the set of packages
+       docker run -ti r-r-xgboost /bin/R
+     #+end_src
+
+**** Produce a docker image of packages from a manifest file
+     The set of packages can also be specified by a manifest file,
+     similar to =guix package=, e.g. if we have a manifest file
+     =pkgs.scm=:
+     #+begin_src shell
+       guix pack -f docker -S /bin=bin -m pkgs.scm
+     #+end_src
+
+     NOTE: the documentation specifically mention that the set of
+     packages can be specified by either a list of package names as
+     arguments to =guix pack=, or through a manifest file, but NOT
+     BOTH. It is strange that there is such a limitation, hopefully it
+     will be changed in the future.
+
+**** Also specify an entry point command
+     The =--entry-point= option can specify a command to run when the
+     docker image is started, e.g. to run guile:
+     #+begin_src shell
+       # seems the command is relative to the profile path
+       guix pack -f docker --entry-point=bin/guile guile
+     #+end_src
+
+     Then the produced image (say renamed to =pack.tar.gz=), can be
+     loaded into docker and run as follows and =guile= will start
+     automatically:
+     #+begin_src shell
+       docker load -i pack.tar.gz
+       #docker run image-id
+       # assume the image id is "guile"
+       docker run guile
+     #+end_src
+
+**** Also use time-machine to pin package versions
+     The =guix time-machine= can be used, together with a manifest
+     file, to easily produce a docker image with the set of desired
+     packages pinned to versions at a certain time point.
+
+     E.g. suppose we have the channel file =channels.scm=, and
+     manifest file =pkgs.scm=:
+     #+begin_src shell
+       guix time-machine -C channels.scm -- pack -f docker -S /bin=bin -m pkgs.scm
+     #+end_src
+
+     The above have been tested with =guix (GNU Guix)
+     ff1c7e40252337cb2c992c2d41e0ed4cefe56df0= (installed on top of
+     Debian 10 in a qemu VM), and the produced docker images have been
+     tested on MacOS with Docker version 19.03.8, build afacb8b.
 
 * A little demo of per-project dependency management
 
