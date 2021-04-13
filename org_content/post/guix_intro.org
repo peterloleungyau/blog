@@ -3,7 +3,7 @@
 
 #+HUGO_AUTO_SET_LASTMOD: nil
 
-#+TITLE: Guix to manage project dependency
+#+TITLE: Use Guix to manage project dependency
 
 #+DATE: 2021-04-05
 
@@ -17,6 +17,9 @@
 This is a brief introduction to the Guix functional package manager,
 and how it could be used to manage dependencies of projects, much like
 virtual environments for Python, but with much larger scope.
+
+This is written in a way that I wish Guix was introduced to me back
+when I first learnt it.
 
 # summary
 
@@ -187,6 +190,211 @@ We first list out some concepts related to packages and dependency:
          - each of the input itself could contain hashes of more inputs recursively, so a web of things could be represented as one hash
          - this technique is also used in [[https://git-scm.com/][git]] version control system to link the commits together
          - the same technique could be used to hash the (direct) dependencies of a package, and therefore one hash could represent all the direct and indirect dependencies of a package
+
+* A closer look at Guix
+** Overview of the different parts of Guix
+   We introduce the main parts of guix through a hypothetical Q&A, so
+   that the parts are better motivated, and it is clearer how each
+   parts fits into the whole.
+
+TODO: add a diagram for overview of parts of Guix
+
+   - Q: We are making a package manager to help us manage
+     dependencies, where should we start?
+     - A: Eventually a package needs to be built, we may as well make
+       a package building tool which also manages dependencies.
+   - Q: Each package has some way of building, e.g. the usual
+     configure-make or cmake for most C or C++ projects, Python
+     packages have their usual way of building, R package can be built
+     by =R CMD build=, so we can have commands for each type of build
+     systems to reduce repetitive work, so that for each package we
+     only specify the unique parts and we should be done?
+     - A:It is a good idea to have commands for different build
+       systems, so we can have =gnu-build-system= (for configure-make
+       builds), =cmake-build-system=, =python-build-system=,
+       =r-build-system=, =julia-build-system=, =texlive-build-system=,
+       =emacs-build-system=, =maven-build-system=,
+       =linux-module-build-system=, =node-build-system= and others.
+     - A: But packages often have dependencies (which is the whole
+       point of package manager), so we should also specify the
+       dependencies of each package, separately for build-time and
+       run-time dependencies. It is also nice to have a /package
+       definition/ to specify these in a sort of declarative way. We
+       may also add some metadata to the package definition such as
+       package name, version number, a short description.
+     - A: An example of package definition is:
+       #+begin_src scheme
+         (define-public r-jsonlite
+           (package
+             (name "r-jsonlite")
+             (version "1.7.2")
+             (source (origin
+                       (method url-fetch)
+                       (uri (cran-uri "jsonlite" version))
+                       (sha256
+                        (base32
+                         "1lhzcpz9clwq04i5m6jzkvw9x03pwlqrixv4l9xzchjr8d84nd86"))))
+             (build-system r-build-system)
+             (native-inputs
+              `(("r-knitr" ,r-knitr)))
+             (home-page "https://arxiv.org/abs/1403.2805")
+             (synopsis "Robust, high performance JSON parser and generator for R")
+             (description
+              "The jsonlite package provides a fast JSON parser and generator optimized
+         for statistical data and the web.  It offers flexible, robust, high
+         performance tools for working with JSON in R and is particularly powerful for
+         building pipelines and interacting with a web API.  In addition to converting
+         JSON data from/to R objects, jsonlite contains functions to stream, validate,
+         and prettify JSON data.  The unit tests included with the package verify that
+         all edge cases are encoded and decoded consistently for use with dynamic data
+         in systems and applications.")
+             (license license:expat)))
+       #+end_src
+   - Q: So with the metadata, we can first ensure the dependencies are
+     available and build them if necessary, before building our target
+     package. But how to prevent incorrectly specified dependencies?
+     - A: To avoid unspecified dependencies, the package can be built
+       in an isolated environment (e.g. a chroot environment) where
+       only the explicitly specified dependencies are available, so
+       that if a needed dependency is not specified, the package will
+       not build successfully, so that we will be aware of the problem
+       at package development time.
+     - A: Overly specified dependencies is less of a problem, because
+       the target package can still be built if there are extra
+       packages available. So one way is to ignore this problem, and
+       simply let package definition writer add dependencies as needed
+       while testing the build.
+   - Q: How to name the package in a unique way? Can we use the
+     package name and the version number, e.g. =r-jsonlite-1.7.2=?
+     - A: Even for the same version of a package, the building
+       parameters (e.g. compiler options) or available dependencies
+       (e.g. optional dependencies, some of which can be turned on or
+       off when building) can still result in different package
+       artefact. If we always use a canonical building parameters and
+       options, then using only the name and version would
+       suffice. But it would be good to have a much finer-grained
+       identify for each exact version of each package, and it can be
+       used for other purposes such as caching.
+     - A: We can pre-pend some kind of hash calculated from the inputs (or
+       their hashes) to the build process, including:
+       - source
+       - dependencies
+       - build system and parameters such as compiler options
+       - environment variables to be defined
+       - target system type
+       - where to store the built package
+     - A: The hash transitively encodes the exact versions of package
+       and all its direct and indirect dependencies.
+     - A: an example of such a unique name is
+       =2am1s5hqgkzxzbyvcfbhxq72diny117q-r-yaml-2.2.1=
+   - Q: Maybe we just calculate the hash of the built artefacts? Oh,
+     but then we will always need to build the package in order to
+     calculate the hash, which greatly reduces the usefulness of the
+     hash?
+     - A: Instead of calculating the hash of the final built artefact,
+       we can produce a /derivation/ which has sufficient details to
+       exactly *reproduce* the package when built. The derivation can be
+       produced efficiently, without building the package. As long as
+       the build process is *deterministic*, the hash of the derivation
+       is as good as the hash of the final built artefacts in uniquely
+       identifying the exact version of the package.
+     - A: an example of derivation is (note that it is in a canonical
+       way without unnecessary whitespace):
+       #+begin_src text
+         Derive([("out","/gnu/store/2am1s5hqgkzxzbyvcfbhxq72diny117q-r-yaml-2.2.1","","")],[("/gnu/store/07byz0yy984h3d8mkbsdxml18wp1nac7-make-4.3.drv",["out"]),("/gnu/store/24lms3l4ylxwb7ddrja4iq92syzya7xd-yaml_2.2.1.tar.gz.drv",["out"]),("/gnu/store/5bbi7iwazfrvc9fg8y4fg4lp6j01d3x3-grep-3.4.drv",["out"]),("/gnu/store/8psdnbc4jhcz3k0ghkd9ha5mdm2r4pd0-bzip2-1.0.8.drv",["out"]),("/gnu/store/8vfk6231k05m6ik6k0dfk5lvm8n7822y-gzip-1.10.drv",["out"]),("/gnu/store/9whhajxkjkxb9vwdb0z5ashcmigj81pa-coreutils-8.32.drv",["out"]),("/gnu/store/afj3j7ghv6zm1iq6p3m5dbqsnrriy9ds-bash-minimal-5.0.16.drv",["out"]),("/gnu/store/b5nnbpgkvgdpzgvj67539ylcaqacj90l-guile-3.0.2.drv",["out"]),("/gnu/store/bhs8mjdhm37wk16qg8jzn9fdcgmllj50-diffutils-3.7.drv",["out"]),("/gnu/store/fdmz5blhzfczkpjb9jj6bdbhqlpv3i7l-gcc-7.5.0.drv",["out"]),("/gnu/store/fvi7sqvk9m1w93xaf8565ai7742zqc2i-xz-5.2.4.drv",["out"]),("/gnu/store/h1vn41niaqhm75b4syvl1cg7f9rbzc0z-glibc-2.31.drv",["out","static"]),("/gnu/store/jd1fm999bf0k2vqlgzqbcacbjrqmai11-module-import-compiled.drv",["out"]),("/gnu/store/mkq3s7av2l1vhcxns84k5q3j7r92imxm-patch-2.7.6.drv",["out"]),("/gnu/store/mm8flcvndb2mr53xhf2zilx263s88bf3-findutils-4.7.0.drv",["out"]),("/gnu/store/mv12ligm0jzz762rh46i09iddhxvaim2-ld-wrapper-0.drv",["out"]),("/gnu/store/n0h0fjvxk93jzl8jp9n6p1g52dlj1m6l-gawk-5.0.1.drv",["out"]),("/gnu/store/pqyd0rq2aqx8rbgdgjzpcjizhq6wzhv9-file-5.38.drv",["out"]),("/gnu/store/qlf9sxffyy9h6cw4zm5jnbilzbimgbil-binutils-2.34.drv",["out"]),("/gnu/store/r7i0jcdvnwkm2k1h4wx42w5m9fnsanmq-glibc-utf8-locales-2.31.drv",["out"]),("/gnu/store/vchlnxh5gsi6m12jk5x66dxswxx32h61-sed-4.8.drv",["out"]),("/gnu/store/y3mdvds4kj82mk76f4rfqlv9n5m19n44-r-minimal-4.0.3.drv",["out"]),("/gnu/store/y9d0im1z8f4bvv7a74s0yycl3d0z4yh0-linux-libre-headers-5.4.20.drv",["out"]),("/gnu/store/zp2jf7vmqm0q386d0snlmhfdsgykdv2a-tar-1.32.drv",["out"])],["/gnu/store/2arrpvah49pfchmlfnppaynwhjx4gw3x-module-import","/gnu/store/rv0awncdchqfd8j32dqjr77s0x44f24r-r-yaml-2.2.1-guile-builder"],"x86_64-linux","/gnu/store/0m0vd873jp61lcm4xa3ljdgx381qa782-guile-3.0.2/bin/guile",["--no-auto-compile","-L","/gnu/store/2arrpvah49pfchmlfnppaynwhjx4gw3x-module-import","/gnu/store/rv0awncdchqfd8j32dqjr77s0x44f24r-r-yaml-2.2.1-guile-builder"],[("GUILE_LOAD_COMPILED_PATH","/gnu/store/k2xsq0ab5yvjhs8km8d74ayardb2n22h-module-import-compiled"),("out","/gnu/store/2am1s5hqgkzxzbyvcfbhxq72diny117q-r-yaml-2.2.1")])
+       #+end_src
+   - Q: by "reproduce" do you mean building the bit-by-bit identical artefacts?
+     - A: Yes, Guix aims at bit-by-bit reproduciblity. Since we are
+       controlling also the build dependencies (e.g. the exact
+       compiler version) and building parameters, for a given
+       architecture (e.g. x86_64), it ought to be able to build the
+       exact same artefacts at a different time, possibly on a
+       different machine with the same architecture.
+     - A: Reproducibility helps with testing, because once a package
+       has been tested in an environment, we have high confidence that
+       it will behave the same in the same environment, even if it was
+       built at a later time.
+     - A: But this strict reproducibility depends on having a
+       deterministic build process using the derivation. So the build
+       cannot for example involve randomness, or write current
+       timestamp in any of the build artefact. So for some packages
+       the build system may need to adjusted for remove these. Guix
+       provides hooks to specify in the package definition any
+       adjustments of the different building phases of any build
+       system.
+   - Q: From the above example of package definition, the dependency
+     specifies only the package name but not the exact version?
+     - A: Yes, when the dependency only lists the name of the package,
+       the exact version is implicit, i.e. it is whatever the version
+       that is built together with the target package.
+     - A: Most package managers have a ability to specify version
+       ranges for dependencies, and a constraint solver is needed to
+       determine whether a certain set of packages have conflicts. But
+       to my knowledge this is not available in Guix. In Guix, it is
+       assumed that when a package definition is developed, it is
+       tested against a particular version of package definitions as
+       dependencies. If none of the package definition of direct or
+       indirect dependency is changed, the package can be exactly
+       reproduced. If any of the depdency was later changed, depending
+       on how many packages it may affect, different levels of testing
+       would be performed to minimize the adverse effect of breaking
+       other packages.
+   - Q: The set of package definitions is critical, how to manage them in a sane way?
+     - A: The package definitions can be organized as a set of files,
+       each containing a set of related packages (e.g. one file for R
+       CRAN packages, one file for Python PyPi packages, etc). In Guix
+       these files are in fact code, so it is a good idea to manage
+       them with source control system such as git.
+     - A: In Guix, a repository of package definitions is maintained
+       as a git repository, the official one is
+       https://git.savannah.gnu.org/git/guix.git
+     - A: Another benefit of maintaining package definitions in git
+       repository is that a git commit represents a snapshot of all
+       the package definitions at a time point, which allows easy
+       pinning of package versions of a set of packages.
+   - Q: Can I maintain my private list of packages?
+     - A: Guix allows using multiple channels at the same time, and
+       creating a channel is basically as simple as creating a git
+       repository. So you can easily create your own channel(s) as a
+       (public or private) git repository, for whatever package
+       definitions that you want to maintain, as long as the computer
+       where Guix is installed can access the repository. Moreoever,
+       you can also add third-party channels (similar to PPA in Debian
+       based distribution) for extra packages.
+     - A: The channels of Guix is recorded at a text file, including
+       the current commit of each channel. This file facilitates
+       version controlling the states of the channels.
+     - A: An example of a file with two channels is:
+       #+begin_src scheme
+         (list (channel
+                 (name 'nonguix)
+                 (url "https://gitlab.com/nonguix/nonguix")
+                 (commit
+                   "51dc6fb07ea1984f2ce55a44b0ce998200fb0e5c")
+                 (introduction
+                   (make-channel-introduction
+                     "897c1a470da759236cc11798f4e0a5f7d4d59fbc"
+                     (openpgp-fingerprint
+                       "2A39 3FFF 68F4 EF7A 3D29  12AF 6F51 20A0 22FB B2D5"))))
+               (channel
+                 (name 'guix)
+                 (url "https://git.sjtu.edu.cn/sjtug/guix.git")
+                 (commit
+                   "0efd68681dcec50d445a4fd080c315b999164828")
+                 (introduction
+                   (make-channel-introduction
+                     "9edb3f66fd807b096b48283debdcddccfea34bad"
+                     (openpgp-fingerprint
+                       "BBB0 2DDF 2CEA F6A8 0D1D  E643 A2A0 6DF2 A33A 54FA")))))
+       #+end_src
+   - Q: but I do not want to build the package from source all the time, can I download pre-built binary instead?
+   - Q: can I easily shared built packages within my network, so that worker nodes need not built the packages themselves?
+   - Q: how to avoid conflicting dependency versions?
+   - Q: can I have two different versions of a package installed at the same time?
+   - Q: how to pin versions of packages?
+   - Q: what if my different projects need different versions and sets of packages? how to ensure different projects do not have conflicts?
+
+TODO
 
 * Why bother with Guix? There are other ways to handle dependency
 Although there are a lot of package managers at both the language level and operating system level, and tools such as docker to help tackle the dependency problem, Guix still has merits when compared to these, as we now discuss.
@@ -504,13 +712,6 @@ Although there are a lot of package managers at both the language level and oper
      - https://sandervanderburg.blogspot.com/2012/11/on-nix-and-gnu-guix.html
      - https://www.reddit.com/r/GUIX/comments/hxcq7d/guix_vs_nix/
    - in short, both Nix and Guix are fine choices of functional package manager, and share a lot of similarities
-
-* A closer look at Guix
-** How you might have designed Guix
-TODO
-
-** Overview of the different parts of Guix
-TODO
 
 * Try out Guix
 ** Get Guix
