@@ -582,8 +582,35 @@ TODO: add a diagram for overview of parts of Guix
        files can be easily version controlled per-project, and
        therefore can be conveniently used for per-project dependency
        management.
-   - Q: what about the "transactional" part?
-     - A:
+   - Q: What about the "transactional" part?
+     - A: "Transactional" means each set of action(s) either succeeds
+       as a whole, or fail as a whole, there would not be half
+       states. E.g. when you try to installing a list of packages in
+       one =guix package= command invocation, if it was interrupted in
+       the middle (e.g. by the user, or there was a power outage),
+       then none of the packages will be "installed", although some of
+       the completed ones may then be present in =/gnu/store=. And you
+       can then repeat the same command, the already completed and
+       cached packages will be quickly finished. Therefore, there is
+       no worry of half-completed states of the set of installed
+       packages.
+     - A: Guix achieves this transactional behavior by using similar
+       techniques as in database management system to maintain the
+       integrity of the cache. When each package is being built, lock
+       files would be created to indicate that it is under
+       construction, and once a package is completed and there the
+       content of its path under =/gnu/store= will not longer be
+       modified, the lock file is removed. Therefore Guix knows which
+       paths are complete and valid, and can maintain the integrity of
+       the cache.
+     - A: Another part to the transactional behavior is the
+       "atomicity" of renaming a (local) file, which is an assumed
+       property of Linux. Since each set of action(s) will create a
+       profile, either the temporary profile for =guix environment=,
+       or the another generation of a profile, which is basically a
+       set of symbolic links. Therefore, Guix can create a set of
+       paths in =gnu/store= as needed, and rename the symbolic link
+       for the profile to finish the action(s).
    - Q: what about interruption when installing packages?
    - Q: what about temporary environment of a set of packages?
    - Q: what if my different projects need different versions and sets of packages? how to ensure different projects do not have conflicts?
