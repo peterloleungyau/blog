@@ -66,8 +66,9 @@ parts of Nix that are interesting and that I should dig deeper.
      - support multi-cloud
 
 * Why Nix?
+There are a few problems related to dependency that Nix wants to solve. The problems are mostly caused by an imperative and a global way of managing packages and dependency.
 
-** Dependency Hell
+** Dependency
    - loosely speakinig, a package is a collection of functionality that we are interested in, e.g.
      - a library of functions,
      - some applications,
@@ -105,7 +106,25 @@ parts of Nix that are interesting and that I should dig deeper.
        - different configurations of the tools are used, e.g. the compiling flags
        - it is built on/for different platform, where some functionality may not be available
      - so even for the same version number, the package might still have different contents (not bit-for-bit identical), and provide different functionality
+     - Dynamic vs static linking
+       - a library (in languages such as C or C++) could be linked either *statically* or *dynamically*
+       - in static linking, the dependency is resolved at build (more precisely the linking) time, so that the built executable contains a static version of the needed library code.
+         - the executable therefore mostly only depends on the kernel, which is mostly backwards compatible (at least in Linux), so the same executable could be expected to work the same way for a long time.
+         - the downside is that if we want to update a library, e.g. to patch a security risk, we would need to rebuild all the packages that use the library
+       - in dynamic linking, at build time, conventionally, only the major version of the library is recorded in the executable, and the library code with the designated major version is looked up and loaded (and then linked) at execution time.
+         - therefore the exact library used in the execution depends on the version found in when the program is run, which may change overtime
+         - the advantage is that in case we want to update a library, we need only update a file (may not need to replace the library file, need only put an updated version in the library path, see [[http://tldp.org/HOWTO/Program-Library-HOWTO/shared-libraries.html][Shared Library]] for a more detailed description of the behavior of dynamic library in Linux)
+         - note that the default behavior in Linux is that the latest minor version installed is loaded, because minor versions are regarded as backward compatible
+
+** Dependency Hell
    - What is dependency hell?
+     - roughly speaking, [[https://en.wikipedia.org/wiki/Dependency_hell][dependency hell]] refers to the problems caused by the dependency on specific versions of some packages.
+     - the dependency hell takes a few forms:
+       - too many or long chains of dependencies:
+         - this is only a problem if the dependencies have to be hunted down manually, which could become tedious very quickly
+         - most package managers solve this by installing the dependencies when a package is installed
+       - conflicting dependencies:
+         - TODO
      - TODO
    - How are some existing package managers address/prevent dependency hell?
      - TODO
@@ -117,6 +136,8 @@ parts of Nix that are interesting and that I should dig deeper.
        - but in production, we do not want any such risk
        - we would rather use the exact same set of packages and its dependencies that we have tested
        - any tools that reduces frictions of accomplishing this should be preferred
+
+** Destructive upgrade
 
 ** Reproducibility
    - Why reproducibility?

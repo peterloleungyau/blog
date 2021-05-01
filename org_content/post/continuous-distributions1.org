@@ -1,0 +1,113 @@
+#+HUGO_BASE_DIR: ../../
+#+HUGO_SECTION: post
+
+#+HUGO_AUTO_SET_LASTMOD: nil
+
+#+TITLE: Continuous Distributions - Part 1
+
+#+DATE: 2019-07-10
+
+#+HUGO_TAGS: "probability distribution" "continuous distribution"
+#+HUGO_CATEGORIES: "statistics" "probability"
+#+AUTHOR:
+#+HUGO_CUSTOM_FRONT_MATTER: :author "Peter Lo"
+
+#+HUGO_DRAFT: false
+
+A continuous random variable can take /uncountably/ many different
+real values, as oppose to only a /countably/ many or even finitely
+many different values. In such case, we cannot give a positive
+probability to each individual values as we do for discrete random
+variable, because the probabilities would sum to be greater
+than 1. Therefore, we need a different way of specifying the
+distribution of continuous random variables. In this post, we first
+look at discretization of continuous random variable to get some
+intuitive idea of how the distribution of continuous random variable
+should look like, then we discuss the concepts such as conditional
+distribution, independence, expected values and variance for
+continuous random variables.
+
+# summary
+
+* Discretization of Continuous Variable
+A lot of quantities on our real life are continuous, examples are
+heights, weights, areas and volumes. Nevertheless, in practice, we
+only measure them up to a certain precision, though we may measure
+with drastically different precisions for different purposes. For
+example, when measure the length of roads, we may use a precision up
+to meters, or even kilometers if it is sufficiently long. On the other
+hand, for circuits in computer chips, we may demand precision in the
+order of nanometers. But let's put this issue aside, and consider
+discretizing the continuous quantity, and then model it as a discrete
+random variable.
+
+# https://en.wikipedia.org/wiki/List_of_average_human_height_worldwide#Table_of_Heights
+# men's height in China: mean=169.5cm, sd=7cm
+
+TODO: add graph
+
+Let's consider the distribution of men's height in China, where we
+discretize to the nearest 1cm to be the discrete random variable
+$X^{(1)}$.  We can then visualize the distribution, where each bar has
+a width of 1cm, so the area is the same as the probability. E.g. the
+area and height of the bar at [155,156) is the probability that $P(155
+\leq X^{(1)} < 156)$, i.e. the probability that the height is greater
+than or equal to 155cm, but less than 156cm. In the following, we will
+use the convention that the probabilty of the bar is represented by
+its area.
+
+With our knowledge of discrete distribution, we can then get the
+probability of different ranges of the heights (with integer valued
+bounaries) by summing the probabilities of the respective bars,
+i.e. summing the areas. For example, the probability that $P(165 \leq
+X^{(1)} < 168)$ is $P(165 \leq X^{(1)} < 166) + P(166 \leq X^{(1)}
+< 167) + P(167 \leq X^{(1)} < 168)$, i.e. the sum of the areas of the
+bar for [165, 166), [166, 167) and [167, 168). Note that this is also
+the area from 165 up to 168.
+
+TODO: add graph
+
+Therefore, the area of a range is the probability of the range, and
+also the proportion of values falling into that range.
+
+Recall that the distribution is a summary of the probability of
+various ranges of values. So the above discretization is /nearly/
+sufficient, with only a little caveat. Since the above discretization
+is only up to a resolution of 1cm, it is tricky to get the probability
+of say $P(155.5 \leq X^{(1)} < 156.1)$, i.e. when either limits of the
+range do not fall exactly at the boundary of the "bars". One way to
+handle it is to use finer resolution, say up to 0.1cm. This would
+alleviate the problem and may even be sufficient for some situations,
+but still lacks some flexibility. Since using the finer resolution
+(i.e narrower stripes) is more flexible, for maximum flexibility, the
+logical conclusion is to use infinite resolution, i.e. the width of
+the stripes should tend to 0. In this case, the height of each strip
+at $x$ should be $\frac{1}{h}P(x \leq X < x + h)$, where the width $h
+\to 0$. Note that the probability of a range is still the area under
+the curve of the range. Also, there is one notable characteristic: the
+probability at any single point $x$ is $\lim_{h \to 0} P(x \leq X <
+x + h) = 0$, because the width tends to 0, but the height is finite.
+
+can use higher precision, i.e. subdivide into more bars
+
+TODO: add graphs of some different resolutions
+
+the graph would be smoother. high precision (narrower bars) supports getting probability of more ranges
+may as well use "infintesimal" widths that tends to 0
+in this case, the heights of the bars will usually be a smooth curve (depending on the distribution), we can still use the area to get the probability of a range.
+
+since we then need to specify infinitely many values, in order to specify the distribution, we give a function for the curve, often by a formula.
+
+this is the basic idea of probability density function for continuous random variables.
+
+* Continous Random Variable
+
+** Probability Density Function
+
+** Joint Distribution
+
+** Conditional Density and Independence
+
+** Expected Value and Variance
+
+* Summary

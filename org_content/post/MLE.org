@@ -5,7 +5,7 @@
 
 #+TITLE: Maximum Likelihood Estimate
 
-#+DATE: 2019-05-10
+#+DATE: 2019-05-20
 
 #+HUGO_TAGS: "maximum likelihood estimate"
 #+HUGO_CATEGORIES: "statistics"
@@ -14,4 +14,52 @@
 
 #+HUGO_DRAFT: true
 
-TODO
+Intro
+
+* Estimate
+
+Assumes a certain distribution of the data.
+A function to give the parameter, when given a sample.
+
+* Likelihood
+
+** Definition
+
+NOTE: a function of the parameters, and the observed sample data is fixed.
+
+*** Discrete distribution
+
+probability of observing the sample.
+same as the value of probability mass function on the sample
+
+*** Continuous distribution
+
+value of probability density function on the sample
+
+** Likelihood examples:
+
+*** Discrete distribution
+
+**** Poisson
+
+**** Binomial
+
+*** Continuous distribution
+
+**** Normal distribution
+
+* Maximizing Likelihood
+
+* Examples
+
+** Poisson distribution
+
+** Binomial distribution
+
+** Normal distribution
+
+** Ordinary Least Square
+
+* Theoretical properties of MLE
+
+* Further reading
