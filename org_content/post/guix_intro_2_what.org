@@ -3,9 +3,9 @@
 
 #+HUGO_AUTO_SET_LASTMOD: nil
 
-#+TITLE: Guix Introduction Part 1: What is Guix?
+#+TITLE: Guix Introduction Part 2: What is Guix? A closer look
 
-#+DATE: 2021-04-05
+#+DATE: 2021-04-21
 
 #+HUGO_TAGS: "Guix" "Functional Package Manager" "Reproducibility"
 #+HUGO_CATEGORIES: "Guix"
@@ -14,20 +14,19 @@
 
 #+HUGO_DRAFT: true
 
-This is the first part of a brief introduction to the Guix functional
+This is the second part of a brief introduction to the Guix functional
 package manager, and how it could be used to manage dependencies of
 projects, much like virtual environments for Python, but with much
 larger scope.
 
 This is written in a way that I wish Guix was introduced to me back
-when I first learnt it.
+when I first learnt it. This time we take a closer look at Guix, and
+briefly introduce the various main components of Guix.
 
 # summary
 
-* What is Guix?
-
-** Guix: functional package manager
-Guix has the following characteristics:
+* Promised Features of Guix
+We first recall the promised features of Guix as a functional package manager:
    - [[https://guix.gnu.org/][Guix]] is in fact a package building system, being a good package manager is a side effect
      - inspired by the [[https://nixos.org/][Nix]] functional package manager
        - which is in turn partly inspired by functional programming, and by [[https://wiki.gentoo.org/wiki/Main_Page][Gentoo]]'s package management
@@ -57,144 +56,7 @@ Guix has the following characteristics:
    - *Guix system* is a GNU/Linux distribution built on top of the Guix package manager
      - use a config file to declaratively specify the whole system, e.g. the system services, user accounts, etc
 
-
-At this point, you may not think these characteristics are special if
-you have not experienced the pains brought by dependency
-management. Hopefully after reading this post you will have better
-appreciation of why a package manager is useful and why Guix is a good
-one due to these good characteristics.
-
-** Basic concepts of packages and dependency
-We first list out some concepts related to packages and dependency:
-   - *package*:
-     - loosely speakinig, a package is a collection of functionality that we are interested in, e.g.
-       - a library of functions, e.g. the [[https://www.tidyverse.org/][tidyverse]] R package
-       - some applications, e.g. the [[https://www.mozilla.org/en-US/firefox/browsers/][firefox]] web browser
-       - command line programs, e.g. the [[https://github.com/BurntSushi/ripgrep][ripgrep]] command for fast grep search on contents of files
-       - or just a set of documentation files
-   - *package building*:
-     - the final files in a package are often produced through a /building/ process from some sort of /source/ files
-     - e.g.
-       - =ripgrep= is written in the [[https://www.rust-lang.org/][Rust programming language]], and would need a Rust compiler to produce the program
-       - some pdf documentations may be produced through the [[https://www.latex-project.org/][Latex]] typesetting system
-       - an R package needs to be built, see https://bookdown.org/rdpeng/RProgDA/building-r-packages.html
-     - some packages are very flexible, and allow specifying different options when building, resulting in functionally slightly different packages
-       - e.g. some functions may be left out if it is considered not useful
-       - e.g. some function could be provided by different *dependent packages*
-     - building script:
-       - most packages have some building process (e.g. a script or a makefile)
-     - building environment:
-       - some packages will automatically detect its environment to change building options
-       - e.g. if some other package is absent, some functionality will be left out, but the building will still succeed
-       - therefore, if the building environment is not properly isolated, the "same" building script may still result in different built package, depending on what other packages are present in the system
-       - this is similar to programming where the output of a "function" depends not only on its inputs, but also on other global variables
-   - *package version*:
-     - strictly speaking, package version is just a name attached to a package, and the name could theoretically be arbitrary, although most package authors follow some conventions
-     - e.g. a lot of packages follow the [[https://semver.org/][Semantic versioning]], briefly
-       - a version number consists of three numbers, in the format of "MAJOR.MINOR.PATCH", e.g. "1.0.4", where each should be increment as follows
-         - MAJOR: when you make incompatible API changes, where MINOR and PATCH could be reset to 0, e.g. from "1.2.3" to "2.0.0"
-         - MINOR: when you add functionality in a backwards compatible manner, where PATCH could be reset to 0, e.g. from "1.2.3" to "1.3.0"
-         - PATCH: when you make backwards compatible bug fixes, e.g. from "1.2.3" to "1.2.4"
-     - NOTE:
-       - normally, different versions will have some differences, although they may be small, or supposed to be /backward compatible/.
-       - even for the same vesion number, the package may be functionally different if built differently, as mentioned above.
-   - *dependency*:
-     - loosely speaking, if a package A needs another package B to provide some functionality, then A /depends/ on B, i.e. B is a /dependency/ of A.
-     - *direct/indirect dependency*:
-       - often a package will list out its needed dependencies (possibly also the range of allowed versions of each dependency), either formally in some fixed format, or informally as free text in some readme
-       - *direct dependency*: the dependencies listed for a package
-       - *indirect dependency*: not direct dependency, but are (direct or indirect) dependencies of the direct dependencies
-       - Why the distinction of direct and indirect dependency? Both are needed to fully capture the dependencies.
-         - the distinction is useful mainly when the dependency updates
-         - if package A directly depends on package B, presumably the developers of A knows which functionality of B is needed
-         - if B is updated to B1, then the developers of A need only check whether the needed functionality is still provided by B1, and act accordinly, rather than checking each of the dependencies of B and B1 to see which are still needed.
-     - *build-time/run-time dependency*:
-       - *build-time dependency*: dependency needed for building a package
-         - e.g. a particular version =gcc= for compiling a program
-         - e,g, *statically linked libraries*, i.e. those compiled into the program, so are needed at build-time
-         - a build-time dependency may or may not be needed when the program is later run
-       - *run-time dependency*: dependency needed for using the package, e.g. running the application
-         - e.g. the *dynamically linked libraries*, i.e. the libraries will be loaded only when the program is run
-         - nowadays, most programs use mostly dynamically linked libraries
-         - NOTE: a dependency can be both build-time and run-time dependency
-     - *optional dependency*: dependency that can be omitted for the package to build or run, but some functionality may be missing
-       - e.g. [[http://www.inkscape.org/][inkscape]] can be built without the optional dependency =potrace=, just without bitmap tracing functionality.
-       - in most *package manager* which mainly distribute binary packages, often most optional dependencies would be included to provide the most funcitonality
-   - *dependency hell*:
-     - roughly speaking, [[https://en.wikipedia.org/wiki/Dependency_hell][dependency hell]] refers to the problems caused by the dependency on specific versions of some packages.
-     - dependency hell takes a few forms:
-       - too many or long chains of dependencies:
-         - this is only a problem if the dependencies have to be hunted down manually, which could become tedious very quickly
-         - most package managers solve this by installing the dependencies when a package is installed
-       - conflicting dependencies:
-         - in many package manager (and default in dynamic library in Linux), minor versions are considered backward compatible, and for each package of the same major version, only the newest minor version is kept/used
-         - if both package A and B depend on a package C, but A and B needs different minor versions of C to work correctly, then A and B have conflicts
-         - this may happen if B is updated to B1 causing C to be updated to C1, therefore causing A to break, even if the older versions of the 3 packages previously coexisted and worked correctly.
-
-           #+CAPTION: Dependency before updating B
-           [[file:dep_before_update.png]]
-
-           #+CAPTION: Dependency after updating B
-           [[file:dep_after_update.png]]
-
-         - in this case, it is clear that if we just let A to use the old C, and the new B1 to use the new C1, then A can work as before, and B can still be updated to B1.
-
-           #+CAPTION: Ideal dependency after updating B
-           [[file:dep_ideal_after_update.png]]
-
-   - ways that code of package A can break if a dependency B updates to a supposingly /backward compatible/ minor version:
-     - although most of the time updating a minor version does not cause problem, they might still cause breakage
-     - e.g. suppose A depends on a function in B, there could be a few cases:
-       - the function interface remains unchanged or adds optional parameters, but the implementation is changed:
-         - A may rely on undocumented behavior of the function, which has changed in the new implementation, although the documented interface is still the same.
-           - e.g. the old implementation may sort the output as a side effect, but not promised in the function interface, and A may have relied on the sorted order
-         - the new implementation may have buggy edge case, causing A to break
-         - the new implementation may expose a buggy edge case in A, causing A to break
-   - *reproducible build*
-     - it is desirable to have the /exact same versions/ of dependencies between testing and production systems, and preferably also for the development environment
-     - it is therefore desirable to /reproduce/ the exact same set of packages on a different machine (of the same architecture) and/or at a different time
-     - this could be achieved in two main ways:
-       - record the set of versions of the (pre-built) packages, and reinstall when needed
-         - e.g. python virtual environment mostly follow this paradigm
-       - record the set of versions of the packages, and rebuild then when needed
-         - this is similar to the previous one, with the difference that the package can be built from scratch if needed
-         - e.g. Guix can rebuild package(s) through the set of package definitions with explicit dependencies information
-           - Guix can simply download the pre-built package (called /substitute/ in Guix) when available
-       - record the set of built packages and just copy them as a whole when needed
-         - e.g. building a docker image to contain all needed packages
-     - isolated building environment can help with reproduciblity
-       - only the explicitly listed dependencies are visible in building, so that the building script will not depend on other packages unknowingly
-   - reproducibility raises the question of /sameness/ of packages
-     - the package name with version number /would be/ sufficient if each version if always built the same way with the same versions of dependencies
-       - this is the strategy adopted by most package managers
-     - a better way is to use the package name together with some kind of *hash*
-       - not necessarily the hash /of/ the package itself, as we will see in later sections
-       - but different contents of a package should produce different hashes
-   - *hash*:
-     - basically a (very large) integer calculated through a *hash function* on some input, e.g. a file
-     - the calculated integer is in some fixed range, often written as a long hexadecimal string such as "730e109bd7a8a32b1cb9d9a09aa2325d2430587ddbc0c38bad911525"
-     - the input however often has not length limit
-     - e.g. [[https://en.wikipedia.org/wiki/SHA-2][sha-256]], [[https://en.wikipedia.org/wiki/MD5][md5]]
-     - desired properties of a good *hash function*:
-       - the same input always produce the same hash, i.e. it is a /pure function/ in the mathematical sense
-         - i.e. if two inputs produce different hashes, they /must be/ different
-       - it is one-way
-         - there is not efficient way to recover the original content just from the hash, other than trying all possible input to find those that give the same hash
-       - even a slight change in the input causes drastically different hash
-         - useful for identifying corruption or tampering of files
-       - /low/ collision, i.e. different inputs /should/ produce different hashes
-         - it is impossible to have /no/ collision unless the set of possible inputs is less than the set of possible outputs
-     - note that one hash is enough to represent a web of connected things:
-       - e.g.
-         - if you have a few (ordered) inputs, you hash each of them, and write the hashes to a file, then you hash this file
-         - this is still a deterministic hashing process
-         - if any of the input is changed, its calculated hash will /most probably/ be different, so this file of hashes will be different, and consequently the final hash will be different
-         - each of the input itself could contain hashes of more inputs recursively, so a web of things could be represented as one hash
-         - this technique is also used in [[https://git-scm.com/][git]] version control system to link the commits together
-         - the same technique could be used to hash the (direct) dependencies of a package, and therefore one hash could represent all the direct and indirect dependencies of a package
-
-* A closer look at Guix
-** Overview of the different parts of Guix
+* The Parts of Guix
    We introduce the main parts of guix through a hypothetical Q&A, so
    that the parts are better motivated, and it is clearer how each
    parts fits into the whole.
@@ -605,20 +467,128 @@ TODO: add a diagram for overview of parts of Guix
        install his or her own sets of packages, organized in however
        many profiles desired, and those packages that are exactly the
        same can still be safely shared.
-   - Q: can I have two different versions of a package installed at the same time?
-     - A:
-   - Q: what about profiles?
-   - Q: how does Guix provide roll-back?
-   - Q: how to pin versions of packages?
+   - Q: Can I have two different versions of a package installed at the same time?
+     - A: The short answer is yes, the long answer is more
+       complicated. It is certainly possibly to have two different
+       versions of a package in the system, because they will have
+       different hashes, and therefore different paths in
+       =/gnu/store=. Also, for most programs, their dependencies are
+       essentially hard-coded (in a static way), so they mostly can
+       co-exist without problems, but installing them to the /same/
+       profile may still cause inconvenience.
+     - A:For example, even if you managed to install both R 3.6.3 and
+       R 4.0.2 in the same profile, since there is only one =PATH=
+       environment variable, when you type =R=, you will only be
+       invoking one of them (whichever one the appears earlier in
+       =PATH=).
+     - A: For packages such as R packages, which are more dynamic in
+       nature, the story is more complicated, where packages in the
+       same profile need to be somewhat compatible with each other. To
+       my understanding, the R packages in a profile are placed in a
+       =site-library= directory in the profile, and inside are
+       symbolic links to real directory of each R package. Currently
+       on my system, my =ds= profile for data science things:
+       #+begin_src shell
+         $ which R
+         /home/peter/guix_extra_profiles/ds/bin/R
+         $ ls /home/peter/guix_extra_profiles/ds
+         bin  etc  include  lib  libexec  manifest  sbin  share  site-library
+         $ ls /home/peter/guix_extra_profiles/ds/site-library/
+         abind       cachem        commonmark   devtools        forcats   ggsci      gtools       jquerylib       lintr         miniUI      pillar       ps             readxl       RPostgreSQL  SHAPforxgboost  survMisc     utf8          xtable
+         askpass     callr         conquer      dials           foreach   ggsignif   hardhat      jsonlite        listenv       minqa       pkgbuild     purrr          recipes      rprojroot    shiny           svglite      vctrs         yaml
+         assertthat  car           corrplot     DiceDesign      foreign   ggtext     haven        KernSmooth      lme4          modeldata   pkgconfig    quantreg       rematch      rsample      shinyjs         sys          viridisLite   yardstick
+         backports   carData       covr         diffobj         formatR   ggthemes   highr        km.ci           lubridate     modelr      pkgload      R6             rematch2     RSelenium    slider          systemfonts  waldo         zip
+         base64enc   caTools       cowplot      digest          fs        gh         hms          KMsurv          magrittr      munsell     plyr         ranger         remotes      rstatix      sourcetools     testthat     warp          zoo
+         BBmisc      cellranger    cpp11        doMC            furrr     gitcreds   htmltools    knitr           maptools      mvtnorm     png          rappdirs       repr         rstudioapi   sp              tibble       wdman
+         BH          checkmate     crayon       dplyr           future    glmnet     htmlwidgets  labeling        markdown      nlme        polyclip     rbenchmark     reprex       R.utils      SparseM         tidymodels   whisker
+         binman      class         credentials  DT              gdata     globals    httpuv       languageserver  MASS          nloptr      polynom      R.cache        rex          rversions    spatial         tidyr        withr
+         bitops      cli           crosstalk    e1071           generics  glue       httr         later           Matrix        nnet        praise       rcmdcheck      rio          rvest        SQUAREM         tidyselect   workflows
+         blob        clipr         curl         ellipsis        gert      gmodels    infer        lattice         MatrixModels  numDeriv    prettyunits  RColorBrewer   rlang        sass         statmod         tidyverse    xfun
+         boot        cluster       cyclocomp    evaluate        ggExtra   gower      ini          lava            matrixStats   openssl     pROC         Rcpp           rmarkdown    scales       stringi         timeDate     xgboost
+         brew        codetools     data.table   exactRankTests  ggforce   GPfit      ipred        lazyeval        maxstat       openxlsx    processx     RcppArmadillo  R.methodsS3  selectr      stringr         tinytex      XML
+         brio        collections   DBI          fansi           ggplot2   gridExtra  isoband      lhs             memoise       parallelly  prodlim      RcppEigen      R.oo         semver       styler          tune         xml2
+         broom       colorspace    dbplyr       farver          ggpubr    gridtext   iterators    lifecycle       mgcv          parsnip     progress     RCurl          roxygen2     sessioninfo  survival        tweenr       xmlparsedata
+         bslib       colourpicker  desc         fastmap         ggrepel   gtable     jpeg         lightgbm        mime          pbkrtest    promises     readr          rpart        shape        survminer       usethis      xopen
+         $ tree /home/peter/guix_extra_profiles/ds/site-library/ | head
+         /home/peter/guix_extra_profiles/ds/site-library/
+         ├── abind -> /gnu/store/54kzkqlfds1da34g66hy881b51q844ly-r-abind-1.4-5/site-library/abind
+         ├── askpass -> /gnu/store/hznmrksfikc75lvs6plywp09vwzhcjbj-r-askpass-1.1/site-library/askpass
+         ├── assertthat -> /gnu/store/bcy712pqmjs86xwchjkq8af701zs76n3-r-assertthat-0.2.1/site-library/assertthat
+         ├── backports -> /gnu/store/1ld20n5abycl0x9ma67zk17mgm390hji-r-backports-1.2.1/site-library/backports
+         ├── base64enc -> /gnu/store/3pkyzwliy76mrcc56rxp2yh4w0g9130f-r-base64enc-0.1-3/site-library/base64enc
+         ├── BBmisc -> /gnu/store/7lm3ivlg7iwz0g9m1h3yl2h5jmn0cp9n-r-bbmisc-1.11/site-library/BBmisc
+         ├── BH -> /gnu/store/d9mcnkkn1crvnjz337h3cznfdnvm2y4c-r-bh-1.75.0-0/site-library/BH
+         ├── binman -> /gnu/store/mwzvczl535j0cqr4yjw48yvs71b5m290-r-binman-0.1.2/site-library/binman
+         ├── bitops -> /gnu/store/mdj7ad7pdm4ljqmxl41gdvi7bk3djwx1-r-bitops-1.0-6/site-library/bitops
+       #+end_src
+
+       And I have experienced Guix errors about R package version
+       conflicts if I installed some very old and very new R packages
+       in the same profile, that's why I now put data science packages
+       in a separate profile.
+     - A: To avoid problems, we can either create different profiles
+       for different sets of compatible packages, and activate the
+       profile as needed. Alternatively, we can use =guix environment=
+       to spawn a temporary shell where the designated packages are
+       accessible, which is a great way to manage per-project
+       dependencies.
+   - Q: I understand that we can use profiles to avoid package version
+     conflicts, much like we do in virtualenv, can you elaborate more
+     on =guix environment=?
+     - A: You can image =guix environment= as a temporary profile
+       (just as every profile has its own path in =/gnu/store=), and
+       you are put a shell with the environment =GUIX_ENVIRONMENT=
+       pointing to its path, and =PATH= is setup such that the =bin=
+       of this temporary profile in at the front of =PATH=. The set of
+       packages can be specified either as arguments in calling the
+       command, or in a manifest file. Once we exit the shell, the
+       temporary profile is still cached in =/gnu/store=, just as with
+       other packages, so that the next time you want an environment
+       with the same set of packages, it can be reused (with a little
+       time for Guix to figure out the profile is already there)
+       instead of rebuilding all the packages. E.g. if I do spawn an
+       environment with R by =guix environment --ad-hoc r= on my
+       current system, once in the shell:
+       #+begin_src shell
+         $ guix environment --ad-hoc r
+         [dev]$ echo $GUIX_ENVIRONMENT
+         /gnu/store/zwz604am03q0n3vwyca3hvfd5lpb0k8z-profile
+         [dev]$ echo $PATH
+         /gnu/store/zwz604am03q0n3vwyca3hvfd5lpb0k8z-profile/bin:/home/peter/guix_extra_profiles/other/bin:/home/peter/guix_extra_profiles/other/sbin:/home/peter/guix_extra_profiles/games/bin:/home/peter/guix_extra_profiles/games/sbin:/home/peter/guix_extra_profiles/ds/bin:/home/peter/guix_extra_profiles/ds/sbin:/home/peter/.guix-profile/bin:/home/peter/.guix-profile/sbin:/run/setuid-programs:/home/peter/.config/guix/current/bin:/home/peter/.guix-profile/bin:/home/peter/.guix-profile/sbin:/run/current-system/profile/bin:/run/current-system/profile/sbin
+         [dev]$ which R
+         /gnu/store/zwz604am03q0n3vwyca3hvfd5lpb0k8z-profile/bin/R
+       #+end_src
+       Note that in this temporary environment, what packages R can
+       see depends on whether there are other R packages installed in
+       other profiles already in effect.
+   - Q: How to pin versions of packages?
+     - A: Recall that the package definitions are maintained as
+       /channels/ which are essentially git repositories, and
+       therefore if we record the commit of each git repositories, we
+       then have a snapshot of package definitions, which allows us to
+       reproducibly build the exact versions of selected packages.
+     - A: In Guix, the commits of channels can be conveniently
+       recorded in a channels file using the =guix describe= command,
+       and you can use the =-f= option to choose a convenient format,
+       e.g. using =guix describe -f channels= results in a channel
+       file suitable for the =guix time-machine= command. The =guix
+       time-machine= allows Guix actions on packages definitions at
+       certain point in time, which can be specified as commit or more
+       conveniently a channels file.
+     - A: E.g. by combining =guix time-machine= and =guix
+       environment=, we can easily reproduce the exact versions of
+       desired set of packages, but using one channel file for
+       commits, and one manifest file for set of packages. These two
+       files can be easily version controlled per-project, and
+       therefore can be conveniently used for per-project dependency
+       management.
    - Q: what about the "transactional" part?
+     - A:
    - Q: what about interruption when installing packages?
    - Q: what about temporary environment of a set of packages?
    - Q: what if my different projects need different versions and sets of packages? how to ensure different projects do not have conflicts?
 
-TODO
-
-
 * What's next?
-In this first part we had a look at what Guix is, next time we will
-discuss why bother with Guix when there are alternatives that solve
-similar problems.
+In this second part we had a closer look at what Guix is, next time we
+will discuss why bother with Guix when there are alternatives that
+solve similar problems.

@@ -3,7 +3,7 @@
 
 #+HUGO_AUTO_SET_LASTMOD: nil
 
-#+TITLE: Use Guix to manage project dependency
+#+TITLE: Guix Introduction: Part 1, What is Guix?
 
 #+DATE: 2021-04-05
 
@@ -14,9 +14,10 @@
 
 #+HUGO_DRAFT: true
 
-This is a brief introduction to the Guix functional package manager,
-and how it could be used to manage dependencies of projects, much like
-virtual environments for Python, but with much larger scope.
+This is the first part of a brief introduction to the Guix functional
+package manager, and how it could be used to manage dependencies of
+projects, much like virtual environments for Python, but with much
+larger scope.
 
 This is written in a way that I wish Guix was introduced to me back
 when I first learnt it.
@@ -352,6 +353,18 @@ TODO: add a diagram for overview of parts of Guix
        repository is that a git commit represents a snapshot of all
        the package definitions at a time point, which allows easy
        pinning of package versions of a set of packages.
+   - Q: So the set of packages form a graph with the dependency links,
+     is there a way to query this web programmatically?
+     - A: Yes, the dependencies among the packages form a graph (which
+       should be a direct acyclic graph, otherwise we would have
+       cyclic dependency) in form of Guile (a dialect of Scheme) data
+       structure, and Guix provides programmatical access to this
+       graph for various kinds of manipulations, e.g.:
+       - query the direct and indirect dependencies of a set of
+         packages
+       - query the set of packages that depend on a package, e.g. to
+         see which package may be affect if a package is updated
+       - plot the dependency graph of a set of packages
    - Q: Can I maintain my private list of packages?
      - A: Guix allows using multiple channels at the same time, and
        creating a channel is basically as simple as creating a git
@@ -387,10 +400,71 @@ TODO: add a diagram for overview of parts of Guix
                      (openpgp-fingerprint
                        "BBB0 2DDF 2CEA F6A8 0D1D  E643 A2A0 6DF2 A33A 54FA")))))
        #+end_src
-   - Q: but I do not want to build the package from source all the time, can I download pre-built binary instead?
-   - Q: can I easily shared built packages within my network, so that worker nodes need not built the packages themselves?
-   - Q: how to avoid conflicting dependency versions?
+   - Q: But I do not want to build the package from source all the
+     time, can I download pre-built binary instead?
+     - A: Of course, it is possible to download pre-built packages
+       called /substitution/ from server. And this is where the
+       package hash comes into handy, because it serves as a key to
+       identify the package; When a package is wanted either directly
+       or indirectly, roughly Guix does the following:
+       - check whether the local =/gnu/store= already has that exact
+         package. If so, then no further action is needed for the
+         package.
+       - if the package is not in =/gnu/store= yet, then check whether
+         there is a pre-built substitue from the official substitution
+         server (or additionally configured server(s)). If so, then
+         download the pre-built package.
+       - if the package is not in any of the substitution servers,
+         then build the package locally.
+     - A: You may also create your own substitution server, which
+       roughly amounts to having a machine with Guix, then running
+       =guix publish=, check [[https://guix.gnu.org/manual/en/html_node/Invoking-guix-publish.html#Invoking-guix-publish][Invoking guix publish]] for details.
+   - Q: Can I easily shared built packages within my network, so that
+     worker nodes need not built the packages themselves?
+     - A: Yes, you can have one or more machines in your network that
+       runs =guix publish=, and add it as a substitution server in the
+       Guix of the work nodes.
+   - Q: Since in Guix each exact version of a package has an
+     associated hash, maybe we can use this to avoid conflicting
+     dependency versions?
+     - A: Of course. The main problem with dynamic dependency is that
+       they are specified with only package name and major version,
+       and resolved at run-time. If another package using the same
+       dependency requires a newer version of it, then it will be
+       updated, and other packages which depend on it will now resolve
+       to the new version, which may cause breakage, even though the
+       newer version is supposed to be backward compatible.
+     - A: The stable and conservative way of managing dependency is to
+       ensure the dependencies always resolve to the same exact
+       version as at built time, so that we need not worry it suddenly
+       breaks due to any other (un)related updates. In Guix, the
+       derivation has already pinned the exact versions of the
+       dependencies using the hash, and in building the package, Guix
+       build system try to hard-code the paths of the dependencies (to
+       =/gnu/store=) as much as possible, so it is similar to "static
+       linking".
+     - A: Note that if some direct or indirect depedency is updated,
+       and we use the same package definition to build the package,
+       the resulting hash will be different (unless we have a hash
+       collision which is exceedingly rare).
+   - Q: This "static linking" does not sound good, are we giving up
+     the benefits of dynamically linked libraries, namely the same
+     code need only has one copy in memory, to be shared between many
+     different programs, which is useful for GUI programs which depend
+     on the widget library.
+     - A: Whether a library is dynamically or statically linked
+       depends on the options in linking. The Guix way is "static",
+       but still uses dynamic linking if the library is dyanmically
+       linked. Therefore, if /exactly/ the same dynamic library is a
+       dependency of several different programs, at run-time, the same
+       dynamic library is still only loaded into memory once and
+       shared.
+     - A: On the other hand,
+   - Q: how about easy updating of dependency, e.g. to fix security vulnerability?
    - Q: can I have two different versions of a package installed at the same time?
+   - Q: so all my built packages are in =/gnu/store= with a long path with package hash, this seems very inconvenient in using, E.g. how do I execute =emacs=?
+   - Q: do I need root privilege to install package in Guix?
+   - Q: how does Guix provide roll-back?
    - Q: how to pin versions of packages?
    - Q: what if my different projects need different versions and sets of packages? how to ensure different projects do not have conflicts?
 
