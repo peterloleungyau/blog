@@ -37,10 +37,10 @@ We first recall the promised features of Guix as a functional package manager:
    - allows atomic installation/uninstallation/upgrade of packages
      - each action may involve one or more packages, and is a *transaction*, i.e. either it succeeds as a whole, or does not succeed, there would not be half installed packages
    - allows easy rollback of install/uninstall/upgrade actions
-     - each transaction results in new generation
+     - each transaction results in new *generation*, which is like a snapshot of the current set of packages (in a /profile/)
      - can easily rollback to previous generations
      - so there is little fear of accidentally installing/uninstalling/upgrading the wrong packages
-   - allows different versions of the "same" package to coexist and used by different pakcages, without conflict
+   - allows different versions of the "same" package to coexist and used by different packages, without conflict
    - encourages declarative package management
      - a set of packages can be specified in a *manifest file*, and can be installed in one transaction
    - currently only works on GNU/Linux
@@ -48,13 +48,13 @@ We first recall the promised features of Guix as a functional package manager:
      - can coexist with the existing package manager of the distribution
    - allows each user to manage his/her own packages
      - without root privilege
-     - without interferring other users
+     - without interfering other users
    - each user can have multiple *profiles* of packages
      - each profile has its own list of generations, and can be rolled back separately
    - allows easy creation of isolated environments with designated packages
      - useful for per-project dependency management
    - *Guix system* is a GNU/Linux distribution built on top of the Guix package manager
-     - use a config file to declaratively specify the whole system, e.g. the system services, user accounts, etc
+     - uses a config file to declaratively specify the whole system, e.g. the system services, user accounts, etc
 
 * The Parts of Guix
    We introduce the main parts of guix through a hypothetical Q&A, so
@@ -63,6 +63,7 @@ We first recall the promised features of Guix as a functional package manager:
 
 TODO: add a diagram for overview of parts of Guix
 
+** Package definition
    - Q: We are making a package manager to help us manage
      dependencies, where should we start?
      - A: Eventually a package needs to be built, we may as well make
@@ -151,6 +152,7 @@ TODO: add a diagram for overview of parts of Guix
        and all its direct and indirect dependencies.
      - A: an example of such a unique name is
        =2am1s5hqgkzxzbyvcfbhxq72diny117q-r-yaml-2.2.1=
+** Derivation
    - Q: Maybe we just calculate the hash of the built artefacts? Oh,
      but then we will always need to build the package in order to
      calculate the hash, which greatly reduces the usefulness of the
@@ -203,6 +205,7 @@ TODO: add a diagram for overview of parts of Guix
        on how many packages it may affect, different levels of testing
        would be performed to minimize the adverse effect of breaking
        other packages.
+** Channels for package definitions
    - Q: The set of package definitions is critical, how to manage them in a sane way?
      - A: The package definitions can be organized as a set of files,
        each containing a set of related packages (e.g. one file for R
@@ -263,6 +266,7 @@ TODO: add a diagram for overview of parts of Guix
                      (openpgp-fingerprint
                        "BBB0 2DDF 2CEA F6A8 0D1D  E643 A2A0 6DF2 A33A 54FA")))))
        #+end_src
+** Substitution servers
    - Q: But I do not want to build the package from source all the
      time, can I download pre-built binary instead?
      - A: Of course, it is possible to download pre-built packages
@@ -310,6 +314,7 @@ TODO: add a diagram for overview of parts of Guix
        and we use the same package definition to build the package,
        the resulting hash will be different (unless we have a hash
        collision which is exceedingly rare).
+** Package upgrading and grafting
    - Q: This "static linking" does not sound good, are we giving up
      the benefits of dynamically linked libraries, namely the same
      code need only has one copy in memory, to be shared between many
@@ -346,6 +351,7 @@ TODO: add a diagram for overview of parts of Guix
        replacing a dynamic library, except that the dependencies are
        still accurately tracked. Also note that grafted packages have
        different hashes from rebuilt package.
+** Per-user profiles
    - Q: so all my built packages are in =/gnu/store= with a long path
      with package hash, and they (mostly) will statically link to each
      other, but the long paths seems very inconvenient in using,
@@ -532,6 +538,7 @@ TODO: add a diagram for overview of parts of Guix
        to spawn a temporary shell where the designated packages are
        accessible, which is a great way to manage per-project
        dependencies.
+** Package version pinning
    - Q: I understand that we can use profiles to avoid package version
      conflicts, much like we do in virtualenv, can you elaborate more
      on =guix environment=?
@@ -561,6 +568,12 @@ TODO: add a diagram for overview of parts of Guix
        Note that in this temporary environment, what packages R can
        see depends on whether there are other R packages installed in
        other profiles already in effect.
+     - A: Note that it is possible to control how "isolated" this
+       environment is. E.g. by limiting the =PATH= not to include the
+       =PATH= of the current shell, the spawn shell is more
+       isolated. Moreover, by using container capability of the Linux
+       kernel, it is possible to also isolate the filesystem and the
+       network, in addition to the accessible packages.
    - Q: How to pin versions of packages?
      - A: Recall that the package definitions are maintained as
        /channels/ which are essentially git repositories, and
@@ -582,6 +595,7 @@ TODO: add a diagram for overview of parts of Guix
        files can be easily version controlled per-project, and
        therefore can be conveniently used for per-project dependency
        management.
+** Transactional package management
    - Q: What about the "transactional" part?
      - A: "Transactional" means each set of action(s) either succeeds
        as a whole, or fail as a whole, there would not be half
@@ -611,9 +625,29 @@ TODO: add a diagram for overview of parts of Guix
        set of symbolic links. Therefore, Guix can create a set of
        paths in =gnu/store= as needed, and rename the symbolic link
        for the profile to finish the action(s).
-   - Q: what about interruption when installing packages?
-   - Q: what about temporary environment of a set of packages?
-   - Q: what if my different projects need different versions and sets of packages? how to ensure different projects do not have conflicts?
+
+** Guix system
+   - Q: What about Guix system? Let me see, since a Linux distribution
+     is more or less a set of packages and some associated
+     configuration working together (besides the Linux kernel), so we
+     can apply the Guix method to manage a whole Linux distribution?
+     - A: Exactly. For example, we use a manifest file to ease our
+       management of packages, imagine applying similar idea to users,
+       groups, and different services of a Linux distribution,
+       i.e. use a plain text /system configuration/ file to
+       "declaratively" specify these (well, maybe user password are
+       better specified in other ways, because we often want to
+       version control this configuration file). Whenever we want to
+       update the "state", e.g. add or remove users, or change some
+       information of users, add or remove system services, then
+       instead of /mutating/ the system imperatively, we instead
+       modify the system configuration file, and re-apply it to
+       reconfigure the system. This has the advantage that the system
+       state should be recorded in the system configuration at all
+       time, which allows us to re-apply the same configuration to a
+       different machine to replicate the setup. Furthermore, the
+       changes to the system can be easily recorded by version
+       controlling this system configuration file.
 
 * What's next?
 In this second part we had a closer look at what Guix is, next time we
