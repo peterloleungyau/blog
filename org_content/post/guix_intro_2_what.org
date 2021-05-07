@@ -352,7 +352,7 @@ TODO: add a diagram for overview of parts of Guix
        still accurately tracked. Also note that grafted packages have
        different hashes from rebuilt package.
 ** Per-user profiles
-   - Q: so all my built packages are in =/gnu/store= with a long path
+   - Q: So all my built packages are in =/gnu/store= with a long path
      with package hash, and they (mostly) will statically link to each
      other, but the long paths seems very inconvenient in using,
      E.g. how do I execute =emacs=?
@@ -538,6 +538,9 @@ TODO: add a diagram for overview of parts of Guix
        to spawn a temporary shell where the designated packages are
        accessible, which is a great way to manage per-project
        dependencies.
+   - Q: Is it possible to record a set of packages in a file, and then
+     instantiate it as a profile in just one command?
+     - A: TODO
 ** Package version pinning
    - Q: I understand that we can use profiles to avoid package version
      conflicts, much like we do in virtualenv, can you elaborate more
