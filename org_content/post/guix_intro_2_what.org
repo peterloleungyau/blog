@@ -540,7 +540,55 @@ TODO: add a diagram for overview of parts of Guix
        dependencies.
    - Q: Is it possible to record a set of packages in a file, and then
      instantiate it as a profile in just one command?
-     - A: TODO
+     - A: Sure, this can be done by using a manifest file, which
+       records the list of packages wnated, then you can use =guix
+       package -m your_manifest= to change the default (you can change
+       the profile to act on by using the =-p= option) profile. An
+       example of a manifest file which contains R and some R packages
+       is:
+       #+begin_src scheme
+         ;; for data science stuffs, here mainly R, and some python
+         (specifications->manifest
+           (list ;;"r-languageserver"
+                 "r"
+                 "r-yaml"
+                 "r-xml2"
+                 "r-xgboost"
+                 "r-tidymodels"
+                 "r-tidyverse"
+                 "r-survminer"
+                 "r-styler"
+                 "r-shiny"
+                 "r-rvest"
+                 "r-rbenchmark"
+                 "r-ranger"
+                 "r-purrr"
+                 "r-lubridate"
+                 "r-jsonlite"
+                 "r-gridextra"
+                 "r-gmodels"
+                 "r-glue"
+                 "r-glmnet"
+                 "r-ggthemes"
+                 "r-ggplot2"
+                 "r-foreach"
+                 "r-formatr"
+                 "r-e1071"
+                 "r-domc"
+                 "r-devtools"
+                 "r-data-table"
+                 "r-blob"
+                 "r-shapforxgboost"
+                 "r-rcpp"
+                 "r-rselenium"
+                 "r-rpostgresql"
+                 "r-dt"
+                 ;;
+                 "python"
+                 "python-ipython"
+                 ))
+
+       #+end_src
 ** Package version pinning
    - Q: I understand that we can use profiles to avoid package version
      conflicts, much like we do in virtualenv, can you elaborate more
