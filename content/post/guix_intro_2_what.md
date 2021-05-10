@@ -1,0 +1,738 @@
++++
+title = "Guix Introduction Part 2: What is Guix? A closer look"
+date = 2021-05-10
+tags = ["Guix", "Functional Package Manager", "Reproducibility"]
+categories = ["Guix"]
+draft = false
+author = "Peter Lo"
++++
+
+This is the second part of a brief introduction to the Guix functional
+package manager, and how it could be used to manage dependencies of
+projects, much like virtual environments for Python, but with much
+larger scope.
+
+This is written in a way that I wish Guix was introduced to me back
+when I first learned it. This time we take a closer look at Guix, and
+briefly introduce the various main components of Guix.
+
+
+## Promised Features of Guix {#promised-features-of-guix}
+
+We first recall the promised features of Guix as a functional package manager:
+
+-   [Guix](https://guix.gnu.org/) is in fact a package building system, being a good package manager is a side effect
+    -   inspired by the [Nix](https://nixos.org/) functional package manager
+        -   which is in turn partly inspired by functional programming, and by [Gentoo](https://wiki.gentoo.org/wiki/Main%5FPage)'s package management
+    -   to make the package building a _pure function_ and therefore more easily reproduced
+-   designed to properly address the "dependency hell" problem
+-   aims at reproducible builds
+    -   the _exact_ same set of packages could be reproduced at a later time or on a different machine (of the same architecture), by just using two small text files
+-   allows atomic installation/uninstallation/upgrade of packages
+    -   each action may involve one or more packages, and is a **transaction**, i.e. either it succeeds as a whole, or does not succeed, there would not be half installed packages
+-   allows easy rollback of install/uninstall/upgrade actions
+    -   each transaction results in new **generation**, which is like a snapshot of the current set of packages (in a _profile_)
+    -   can easily rollback to previous generations
+    -   so there is little fear of accidentally installing/uninstalling/upgrading the wrong packages
+-   allows different versions of the "same" package to coexist and used by different packages, without conflict
+-   encourages declarative package management
+    -   a set of packages can be specified in a **manifest file**, and can be installed in one transaction
+-   currently only works on GNU/Linux
+    -   can be installed on any GNU/Linux distribution such as Debian, Ubuntu, Arch, etc
+    -   can coexist with the existing package manager of the distribution
+-   allows each user to manage his/her own packages
+    -   without root privilege
+    -   without interfering other users
+-   each user can have multiple **profiles** of packages
+    -   each profile has its own list of generations, and can be rolled back separately
+-   allows easy creation of isolated environments with designated packages
+    -   useful for per-project dependency management
+-   **Guix system** is a GNU/Linux distribution built on top of the Guix package manager
+    -   uses a config file to declaratively specify the whole system, e.g. the system services, user accounts, etc
+
+
+## The Parts of Guix {#the-parts-of-guix}
+
+We introduce the main parts of Guix through a hypothetical Q&A, so
+that the parts are better motivated, and it is clearer how each
+part fits into the whole.
+
+{{< figure src="/ox-hugo/guix_intro_overview.png" caption="Figure 1: Guix Overview" >}}
+
+
+### Package definition {#package-definition}
+
+-   Q: We are making a package manager to help us manage
+    dependencies, where should we start?
+    -   A: Eventually a package needs to be built, we may as well make
+        a package building tool which also manages dependencies.
+-   Q: Each package has some way of building, e.g. the usual
+    configure-make or cmake for most C or C++ projects, Python
+    packages have their usual way of building, R package can be built
+    by `R CMD build`, so we can have commands for each type of build
+    system to reduce repetitive work, so that for each package we
+    only specify the unique parts and we should be done?
+    -   A:It is a good idea to have commands for different build
+        systems, so we can have `gnu-build-system` (for configure-make
+        builds), `cmake-build-system`, `python-build-system`,
+        `r-build-system`, `julia-build-system`, `texlive-build-system`,
+        `emacs-build-system`, `maven-build-system`,
+        `linux-module-build-system`, `node-build-system` and others.
+    -   A: But packages often have dependencies (which is the whole
+        point of package manager), so we should also specify the
+        dependencies of each package, separately for build-time and
+        run-time dependencies. It is also nice to have a _package
+        definition_ to specify these in a sort of declarative way. We
+        may also add some metadata to the package definition such as
+        package name, version number, a short description.
+    -   A: An example of package definition is:
+
+        ```scheme
+        (define-public r-jsonlite
+          (package
+            (name "r-jsonlite")
+            (version "1.7.2")
+            (source (origin
+                      (method url-fetch)
+                      (uri (cran-uri "jsonlite" version))
+                      (sha256
+                       (base32
+                        "1lhzcpz9clwq04i5m6jzkvw9x03pwlqrixv4l9xzchjr8d84nd86"))))
+            (build-system r-build-system)
+            (native-inputs
+             `(("r-knitr" ,r-knitr)))
+            (home-page "https://arxiv.org/abs/1403.2805")
+            (synopsis "Robust, high performance JSON parser and generator for R")
+            (description
+             "The jsonlite package provides a fast JSON parser and generator optimized
+        for statistical data and the web.  It offers flexible, robust, high
+        performance tools for working with JSON in R and is particularly powerful for
+        building pipelines and interacting with a web API.  In addition to converting
+        JSON data from/to R objects, jsonlite contains functions to stream, validate,
+        and prettify JSON data.  The unit tests included with the package verify that
+        all edge cases are encoded and decoded consistently for use with dynamic data
+        in systems and applications.")
+            (license license:expat)))
+        ```
+-   Q: So with the metadata, we can first ensure the dependencies are
+    available and build them if necessary, before building our target
+    package. But how to prevent incorrectly specified dependencies?
+    -   A: To avoid unspecified dependencies, the package can be built
+        in an isolated environment (e.g. a chroot environment) where
+        only the explicitly specified dependencies are available, so
+        that if a needed dependency is not specified, the package will
+        not build successfully, so that we will be aware of the problem
+        at package development time.
+    -   A: Overly specified dependencies is less of a problem, because
+        the target package can still be built if there are extra
+        packages available. So one way is to ignore this problem, and
+        simply let package definition writer add dependencies as needed
+        while testing the build.
+-   Q: How to name the package in a unique way? Can we use the
+    package name and the version number, e.g. `r-jsonlite-1.7.2`?
+    -   A: Even for the same version of a package, the building
+        parameters (e.g. compiler options) or available dependencies
+        (e.g. optional dependencies, some of which can be turned on or
+        off when building) can still result in different package
+        artifact. If we always use a canonical building parameters and
+        options, then using only the name and version would
+        suffice. But it would be good to have a much finer-grained
+        identity for each exact version of each package, and it can be
+        used for other purposes such as caching.
+    -   A: We can pre-pend some kind of hash calculated from the inputs (or
+        their hashes) to the build process, including:
+        -   source
+        -   dependencies
+        -   build system and parameters such as compiler options
+        -   environment variables to be defined
+        -   target system type
+        -   where to store the built package
+    -   A: The hash transitively encodes the exact versions of package
+        and all its direct and indirect dependencies.
+    -   A: an example of such a unique name is
+        `2am1s5hqgkzxzbyvcfbhxq72diny117q-r-yaml-2.2.1`
+
+
+### Derivation {#derivation}
+
+-   Q: Maybe we just calculate the hash of the built artifacts? Oh,
+    but then we will always need to build the package in order to
+    calculate the hash, which greatly reduces the usefulness of the
+    hash?
+    -   A: Instead of calculating the hash of the final built artifact,
+        we can produce a _derivation_ which has sufficient details to
+        exactly **reproduce** the package when built. The derivation can be
+        produced efficiently, without building the package. As long as
+        the build process is **deterministic**, the hash of the derivation
+        is as good as the hash of the final built artifacts in uniquely
+        identifying the exact version of the package.
+    -   A: an example of derivation is (note that it is in a canonical
+        way without unnecessary whitespace):
+
+        ```text
+        Derive([("out","/gnu/store/2am1s5hqgkzxzbyvcfbhxq72diny117q-r-yaml-2.2.1","","")],[("/gnu/store/07byz0yy984h3d8mkbsdxml18wp1nac7-make-4.3.drv",["out"]),("/gnu/store/24lms3l4ylxwb7ddrja4iq92syzya7xd-yaml_2.2.1.tar.gz.drv",["out"]),("/gnu/store/5bbi7iwazfrvc9fg8y4fg4lp6j01d3x3-grep-3.4.drv",["out"]),("/gnu/store/8psdnbc4jhcz3k0ghkd9ha5mdm2r4pd0-bzip2-1.0.8.drv",["out"]),("/gnu/store/8vfk6231k05m6ik6k0dfk5lvm8n7822y-gzip-1.10.drv",["out"]),("/gnu/store/9whhajxkjkxb9vwdb0z5ashcmigj81pa-coreutils-8.32.drv",["out"]),("/gnu/store/afj3j7ghv6zm1iq6p3m5dbqsnrriy9ds-bash-minimal-5.0.16.drv",["out"]),("/gnu/store/b5nnbpgkvgdpzgvj67539ylcaqacj90l-guile-3.0.2.drv",["out"]),("/gnu/store/bhs8mjdhm37wk16qg8jzn9fdcgmllj50-diffutils-3.7.drv",["out"]),("/gnu/store/fdmz5blhzfczkpjb9jj6bdbhqlpv3i7l-gcc-7.5.0.drv",["out"]),("/gnu/store/fvi7sqvk9m1w93xaf8565ai7742zqc2i-xz-5.2.4.drv",["out"]),("/gnu/store/h1vn41niaqhm75b4syvl1cg7f9rbzc0z-glibc-2.31.drv",["out","static"]),("/gnu/store/jd1fm999bf0k2vqlgzqbcacbjrqmai11-module-import-compiled.drv",["out"]),("/gnu/store/mkq3s7av2l1vhcxns84k5q3j7r92imxm-patch-2.7.6.drv",["out"]),("/gnu/store/mm8flcvndb2mr53xhf2zilx263s88bf3-findutils-4.7.0.drv",["out"]),("/gnu/store/mv12ligm0jzz762rh46i09iddhxvaim2-ld-wrapper-0.drv",["out"]),("/gnu/store/n0h0fjvxk93jzl8jp9n6p1g52dlj1m6l-gawk-5.0.1.drv",["out"]),("/gnu/store/pqyd0rq2aqx8rbgdgjzpcjizhq6wzhv9-file-5.38.drv",["out"]),("/gnu/store/qlf9sxffyy9h6cw4zm5jnbilzbimgbil-binutils-2.34.drv",["out"]),("/gnu/store/r7i0jcdvnwkm2k1h4wx42w5m9fnsanmq-glibc-utf8-locales-2.31.drv",["out"]),("/gnu/store/vchlnxh5gsi6m12jk5x66dxswxx32h61-sed-4.8.drv",["out"]),("/gnu/store/y3mdvds4kj82mk76f4rfqlv9n5m19n44-r-minimal-4.0.3.drv",["out"]),("/gnu/store/y9d0im1z8f4bvv7a74s0yycl3d0z4yh0-linux-libre-headers-5.4.20.drv",["out"]),("/gnu/store/zp2jf7vmqm0q386d0snlmhfdsgykdv2a-tar-1.32.drv",["out"])],["/gnu/store/2arrpvah49pfchmlfnppaynwhjx4gw3x-module-import","/gnu/store/rv0awncdchqfd8j32dqjr77s0x44f24r-r-yaml-2.2.1-guile-builder"],"x86_64-linux","/gnu/store/0m0vd873jp61lcm4xa3ljdgx381qa782-guile-3.0.2/bin/guile",["--no-auto-compile","-L","/gnu/store/2arrpvah49pfchmlfnppaynwhjx4gw3x-module-import","/gnu/store/rv0awncdchqfd8j32dqjr77s0x44f24r-r-yaml-2.2.1-guile-builder"],[("GUILE_LOAD_COMPILED_PATH","/gnu/store/k2xsq0ab5yvjhs8km8d74ayardb2n22h-module-import-compiled"),("out","/gnu/store/2am1s5hqgkzxzbyvcfbhxq72diny117q-r-yaml-2.2.1")])
+        ```
+-   Q: by "reproduce" do you mean building the bit-by-bit identical artifacts?
+    -   A: Yes, Guix aims at bit-by-bit reproducibility. Since we are
+        controlling also the build dependencies (e.g. the exact
+        compiler version) and building parameters, for a given
+        architecture (e.g. x86\_64), it ought to be able to build the
+        exact same artifacts at a different time, possibly on a
+        different machine with the same architecture.
+    -   A: Reproducibility helps with testing, because once a package
+        has been tested in an environment, we have high confidence that
+        it will behave the same in the same environment, even if it was
+        built at a later time.
+    -   A: But this strict reproducibility depends on having a
+        deterministic build process using the derivation. So the build
+        cannot for example involve randomness, or write current
+        timestamp in any of the build artifact. So for some packages
+        the build system may need to be adjusted for remove these. Guix
+        provides hooks to specify in the package definition any
+        adjustments of the different building phases of any build
+        system.
+-   Q: From the above example of package definition, the dependency
+    specifies only the package name but not the exact version?
+    -   A: Yes, when the dependency only lists the name of the package,
+        the exact version is implicit, i.e. it is whatever the version
+        that is built together with the target package.
+    -   A: Most package managers have the ability to specify version
+        ranges for dependencies, and a constraint solver is needed to
+        determine whether a certain set of packages have conflicts. But
+        to my knowledge this is not available in Guix. In Guix, it is
+        assumed that when a package definition is developed, it is
+        tested against a particular version of package definitions as
+        dependencies. If none of the package definition of direct or
+        indirect dependency is changed, the package can be exactly
+        reproduced. If any of the dependency was later changed, depending
+        on how many packages it may affect, different levels of testing
+        would be performed to minimize the adverse effect of breaking
+        other packages.
+
+
+### Channels for package definitions {#channels-for-package-definitions}
+
+-   Q: The set of package definitions is critical, how to manage them in a sane way?
+    -   A: The package definitions can be organized as a set of files,
+        each containing a set of related packages (e.g. one file for R
+        CRAN packages, one file for Python PyPi packages, etc). In Guix
+        these files are in fact code, so it is a good idea to manage
+        them with source control system such as git.
+    -   A: In Guix, a repository of package definitions is maintained
+        as a git repository, the official one is
+        <https://git.savannah.gnu.org/git/guix.git>
+    -   A: Another benefit of maintaining package definitions in git
+        repository is that a git commit represents a snapshot of all
+        the package definitions at a time point, which allows easy
+        pinning of package versions of a set of packages.
+-   Q: So the set of packages form a graph with the dependency links,
+    is there a way to query this graph programmatically?
+    -   A: Yes, the dependencies among the packages form a graph (which
+        should be a direct acyclic graph, otherwise we would have
+        cyclic dependency) in form of Guile (a dialect of Scheme) data
+        structure, and Guix provides programmatical access to this
+        graph for various kinds of manipulations, e.g.:
+        -   query the direct and indirect dependencies of a set of
+            packages
+        -   query the set of packages that depend on a package, e.g. to
+            see which package may be affected if a package is updated
+        -   plot the dependency graph of a set of packages
+-   Q: Can I maintain my private list of packages?
+    -   A: Guix allows using multiple channels at the same time, and
+        creating a channel is basically as simple as creating a git
+        repository. So you can easily create your own channel(s) as a
+        (public or private) git repository, for whatever package
+        definitions that you want to maintain, as long as the computer
+        where Guix is installed can access the repository. Moreover,
+        you can also add third-party channels (similar to PPA in Debian
+        based distribution) for extra packages.
+    -   A: The channels of Guix is recorded as a text file, including
+        the current commit of each channel. This file facilitates
+        version controlling of the states of the channels.
+    -   A: An example of a file with two channels is:
+
+        ```scheme
+        (list (channel
+                (name 'nonguix)
+                (url "https://gitlab.com/nonguix/nonguix")
+                (commit
+                  "51dc6fb07ea1984f2ce55a44b0ce998200fb0e5c")
+                (introduction
+                  (make-channel-introduction
+                    "897c1a470da759236cc11798f4e0a5f7d4d59fbc"
+                    (openpgp-fingerprint
+                      "2A39 3FFF 68F4 EF7A 3D29  12AF 6F51 20A0 22FB B2D5"))))
+              (channel
+                (name 'guix)
+                (url "https://git.sjtu.edu.cn/sjtug/guix.git")
+                (commit
+                  "0efd68681dcec50d445a4fd080c315b999164828")
+                (introduction
+                  (make-channel-introduction
+                    "9edb3f66fd807b096b48283debdcddccfea34bad"
+                    (openpgp-fingerprint
+                      "BBB0 2DDF 2CEA F6A8 0D1D  E643 A2A0 6DF2 A33A 54FA")))))
+        ```
+
+
+### Substitution servers {#substitution-servers}
+
+-   Q: But I do not want to build the package from source all the
+    time, can I download pre-built binary instead?
+    -   A: Of course, it is possible to download pre-built packages
+        called _substitution_ from server. And this is where the
+        package hash comes into handy, because it serves as a key to
+        identify the package. When a package is wanted either directly
+        or indirectly, roughly Guix does the following:
+        -   check whether the local `/gnu/store` already has that exact
+            package. If so, then no further action is needed for the
+            package.
+        -   if the package is not in `/gnu/store` yet, then check whether
+            there is a pre-built substitute from the official substitution
+            server (or additionally configured server(s)). If so, then
+            download the pre-built package.
+        -   if the package is not in any of the substitution servers,
+            then build the package locally.
+    -   A: You may also create your own substitution server, which
+        roughly amounts to having a machine with Guix, then running
+        `guix publish`, check [Invoking guix publish](https://guix.gnu.org/manual/en/html%5Fnode/Invoking-guix-publish.html#Invoking-guix-publish) for details.
+-   Q: Can I easily share built packages within my network, so that
+    worker nodes need not build the packages themselves?
+    -   A: Yes, you can have one or more machines in your network that
+        runs `guix publish`, and add it (or them) as a substitution server(s) in the
+        Guix of the work nodes.
+
+
+### Package upgrading and grafting {#package-upgrading-and-grafting}
+
+-   Q: Since in Guix each exact version of a package has an
+    associated hash, maybe we can use this to avoid conflicting
+    dependency versions?
+    -   A: Of course. The main problem with dynamic dependency is that
+        they are specified with only package name and major version,
+        and resolved at run-time. If another package using the same
+        dependency requires a newer version of it, then it will be
+        updated, and other packages which depend on it will now resolve
+        to the new version, which may cause breakage, even though the
+        newer version is supposed to be backward compatible.
+    -   A: The stable and conservative way of managing dependency is to
+        ensure the dependencies always resolve to the same exact
+        version as at built time, so that we need not worry that it suddenly
+        breaks due to any other (un)related updates. In Guix, the
+        derivation has already pinned the exact versions of the
+        dependencies using the hash, and in building the package, Guix
+        build system tries to hard-code the paths of the dependencies (to
+        `/gnu/store`) as much as possible, so it is similar to "static
+        linking".
+    -   A: Note that if some direct or indirect dependency is updated,
+        and we use the same package definition to build the package,
+        the resulting hash will be different (unless we have a hash
+        collision which is exceedingly rare).
+-   Q: This "static linking" does not sound good, are we giving up
+    the benefits of dynamically linked libraries, namely the same
+    code need only has one copy in memory, to be shared between many
+    different programs, which is useful for GUI programs which depend
+    on the widget library?
+    -   A: Whether a library is dynamically or statically linked
+        depends on the options in linking. The Guix way is "static",
+        but still uses dynamic linking if the library is dynamically
+        linked. Therefore, if _exactly_ the same dynamic library is a
+        dependency of several different programs, at run-time, the same
+        dynamic library is still only loaded into memory once and
+        shared.
+    -   A: On the other hand, if different programs need to use
+        different minor versions of the same dynamic library, then
+        Guix's way just works with no other handling needed.
+-   Q: How about easy updating of dependency, e.g. to fix security vulnerability?
+    -   A: In true static linking, if a library needs to be updated
+        (e.g. due to security vulnerability), all the packages that
+        directly or indirectly depend on the library need to be
+        rebuilt. Guix is similar, with the difference that Guix
+        carefully and accurately tracks the dependencies, so
+        re-building is less of a hassle, and only takes some time. Also
+        note that, the rebuilt packages will have different hashes, and
+        the updated dependencies are again carefully and accurately
+        tracked.
+    -   A: But it is true that having to rebuild packages could be
+        inconvenient, especially for lower level libraries that is
+        dependency of many other packages (e.g. glibc). That's why Guix
+        allows [grafting](https://guix.gnu.org/ru/blog/2020/grafts-continued/), which basically allows replacing some
+        dependencies without rebuilding the whole package, i.e. reusing
+        most of other components, if applicable. Also see [Security
+        Updates](https://guix.gnu.org/manual/en/html%5Fnode/Security-Updates.html) for more descriptions. This may save substantial time
+        in rebuilding packages, and is pretty much the same as
+        replacing a dynamic library, except that the dependencies are
+        still accurately tracked. Also note that grafted packages have
+        different hashes from rebuilt package.
+
+
+### Per-user profiles {#per-user-profiles}
+
+-   Q: So all my built packages are in `/gnu/store` with a long path
+    with package hash, and they (mostly) will statically link to each
+    other, but the long paths seems very inconvenient in using,
+    E.g. how do I execute `emacs`?
+    -   A: Of course it is extremely inconvenient to type
+        `/gnu/store/ccg56ki80zshgkpbbaabh9dd6frmfxc3-emacs-27.2/bin/emacs`
+        to invoke emacs, so Guix uses a bunch of symbolic links and
+        suitably setting the `PATH` environment so that you can still
+        conveniently invoke emacs just by typing `emacs` in your shell.
+    -   A: In a typical Linux, the program binaries are installed in
+        locations such as `/bin`, `/usr/bin`, etc, and these paths are
+        added to the `PATH` environment variable, so that we can
+        simply type the program name to invoke a program. But putting
+        all binaries at a global location causes trouble when we want
+        different versions of the same program to be installed (and they
+        have the same name, think different versions of R, the
+        executable are all called `R`) and choose which to use at
+        different times.
+    -   A: In order to avoid this problem, Guix uses the idea of
+        _profile_ to hold a set of packages, which is essentially a
+        directory containing sub-directories such as `bin` to hold
+        symbolic links to binaries, `etc`, `include`, `lib`, etc which
+        holds (symbolic links) to things for the set of
+        packages. E.g. currently on my system the default profile
+        `/home/peter/.guix-profile` points to
+        `/gnu/store/iw0r9yprbhsy5vlqp1dkg7maajnf3hkb-profile` (found by
+        `readlink -f /home/peter/.guix-profile`). And we can have a peek of what is inside:
+
+        ```shell
+        $ ls -l /gnu/store/iw0r9yprbhsy5vlqp1dkg7maajnf3hkb-profile
+        total 164
+        dr-xr-xr-x  2 root root 36864 Jan  1  1970 bin
+        dr-xr-xr-x  4 root root  4096 Jan  1  1970 etc
+        dr-xr-xr-x  2 root root  4096 Jan  1  1970 include
+        dr-xr-xr-x  7 root root 12288 Jan  1  1970 lib
+        dr-xr-xr-x  2 root root  4096 Jan  1  1970 libexec
+        -r--r--r--  2 root root 89125 Jan  1  1970 manifest
+        dr-xr-xr-x  2 root root  4096 Jan  1  1970 sbin
+        dr-xr-xr-x 19 root root  4096 Jan  1  1970 share
+        lrwxrwxrwx  7 root root    61 Jan  1  1970 var -> /gnu/store/xnrw9pmw6zjc2x7f7w9bzq0sqjx9cbrl-openssh-8.5p1/var
+
+        $ tree /gnu/store/iw0r9yprbhsy5vlqp1dkg7maajnf3hkb-profile | head -n 20
+        /gnu/store/iw0r9yprbhsy5vlqp1dkg7maajnf3hkb-profile
+        ├── bin
+        │   ├── a2ping -> /gnu/store/rnk9lj36z59ikmj4izs3r0knn0klkig2-texlive-20190410/bin/a2ping
+        │   ├── a5toa4 -> /gnu/store/rnk9lj36z59ikmj4izs3r0knn0klkig2-texlive-20190410/bin/a5toa4
+        │   ├── adhocfilelist -> /gnu/store/rnk9lj36z59ikmj4izs3r0knn0klkig2-texlive-20190410/bin/adhocfilelist
+        │   ├── afm2afm -> /gnu/store/rnk9lj36z59ikmj4izs3r0knn0klkig2-texlive-20190410/bin/afm2afm
+        │   ├── afm2pl -> /gnu/store/rnk9lj36z59ikmj4izs3r0knn0klkig2-texlive-20190410/bin/afm2pl
+        │   ├── afm2tfm -> /gnu/store/rnk9lj36z59ikmj4izs3r0knn0klkig2-texlive-20190410/bin/afm2tfm
+        │   ├── ag -> /gnu/store/bk09ij4jxmpvxij0q3k2022ivrj5mfag-the-silver-searcher-2.2.0/bin/ag
+        │   ├── aleph -> /gnu/store/rnk9lj36z59ikmj4izs3r0knn0klkig2-texlive-20190410/bin/aleph
+        │   ├── allcm -> /gnu/store/rnk9lj36z59ikmj4izs3r0knn0klkig2-texlive-20190410/bin/allcm
+        │   ├── allec -> /gnu/store/rnk9lj36z59ikmj4izs3r0knn0klkig2-texlive-20190410/bin/allec
+        │   ├── allneeded -> /gnu/store/rnk9lj36z59ikmj4izs3r0knn0klkig2-texlive-20190410/bin/allneeded
+        │   ├── arara -> /gnu/store/rnk9lj36z59ikmj4izs3r0knn0klkig2-texlive-20190410/bin/arara
+        │   ├── arlatex -> /gnu/store/rnk9lj36z59ikmj4izs3r0knn0klkig2-texlive-20190410/bin/arlatex
+        │   ├── authorindex -> /gnu/store/rnk9lj36z59ikmj4izs3r0knn0klkig2-texlive-20190410/bin/authorindex
+        │   ├── autoinst -> /gnu/store/rnk9lj36z59ikmj4izs3r0knn0klkig2-texlive-20190410/bin/autoinst
+        │   ├── autopep8 -> /gnu/store/isb01kkmcx4x9b4b4hc86z3ayk8659za-python-autopep8-1.5.3/bin/autopep8
+        │   ├── autosp -> /gnu/store/rnk9lj36z59ikmj4izs3r0knn0klkig2-texlive-20190410/bin/autosp
+        │   ├── axohelp -> /gnu/store/rnk9lj36z59ikmj4izs3r0knn0klkig2-texlive-20190410/bin/axohelp
+
+        ```
+
+        We see that the programs inside `bin` of the profile are really
+        symbolic links to the real binary in the packages in
+        `/gnu/store`.  And therefore if my `PATH` contains
+        `/home/peter/.guix-profile/bin`, I can use the programs in the
+        profile just as those installed globally. Note that the real
+        profile directory is also in `/gnu/store` with a hash, so if
+        you install a different set of packages, the real path will be
+        different.
+-   Q: But then what advantage does a profile provide? Oh, "most
+    problems in computer science can be solved with one more level of
+    indirection", since profiles are behind at least one level of
+    symbolic links, that means we can have multiple profiles for
+    different sets (and versions) of packages, to be used either
+    independently or together, by setting `PATH` and related
+    environment variables suitably, right? I guess that's how Guix
+    provides the generation and roll-back features?
+    -   A: Exactly. Also, when we make any install/upgrade/remove
+        actions on a profile, essentially we are asking for a different
+        set of packages, so it will have a different real directory
+        under `/gnu/store` with its own hash, and we can make a new
+        symbolic link for it (whether the set of packages have already
+        been created or not), and give it a new generation number,
+        while _keeping_ the symbolic link for the previous
+        generation. This way, we can easily _roll-back_ to the previous
+        set of packages by just changing a symbolic link. This removes
+        a lot of trouble of accidentally upgrading packages and
+        breaking your workflow.
+    -   A: Moreover, since a symbolic link is cheap, we can easily
+        create as many as we like, and each profile can have its own
+        generation numbers, and be changed separately. There is great
+        flexibility in how the profiles can be used. Some profiles can
+        be used together if we put their `bin` directories in `PATH`;
+        or some profiles can be meant to be used separately, activated
+        only when needed, much like virtualenv in Python. The profile
+        organization is entirely up to the user. For example, currently
+        on my system I have the default profile for my frequently used
+        tools such as `emacs` and many `emacs` packages, a separate profile
+        for data science related packages such as R and R packages.
+-   Q: Given that the `/gnu/store` is a global location for all the
+    packages, do I need root privilege to install package in Guix?
+    -   A: No, each user can create as many profiles as he or she
+        likes, because the default profile is put under the user's home
+        directory, and extra profiles can be placed basically wherever
+        the user likes. Although `/gnu/store` is the global cache of
+        all the packages and other stuffs, it is meant to be
+        _immutable_ from the perspective of normal user (i.e. normal
+        user cannot modify `/gnu/store` directly), so it can be shared
+        with different users and profiles. And writing to the
+        `/gnu/store` is managed by the Guix daemon, so that its
+        consistency can be maintained.
+    -   A: When a user do any actions that need to update `/gnu/store`
+        (e.g. downloading a pre-built package, or creating a profile
+        with a different set of packages), the `guix` command will
+        communicate with the Guix daemon as needed. Therefore, even on
+        a shared system such as a server, Guix allows each user to
+        install his or her own sets of packages, organized in however
+        many profiles desired, and those packages that are exactly the
+        same can still be safely shared.
+-   Q: Can I have two different versions of a package installed at the same time?
+    -   A: The short answer is yes, the long answer is more
+        complicated. It is certainly possible to have two different
+        versions of a package in the system, because they will have
+        different hashes, and therefore different paths in
+        `/gnu/store`. Also, for most programs, their dependencies are
+        essentially hard-coded (in a static way), so they mostly can
+        co-exist without problems, but installing them to the _same_
+        profile may still cause inconvenience.
+    -   A: For example, even if you managed to install both R 3.6.3 and
+        R 4.0.2 in the same profile, since there is only one `PATH`
+        environment variable, when you type `R`, you will only be
+        invoking one of them (whichever one that appears earlier in
+        `PATH`).
+    -   A: For packages such as R packages, which are more dynamic in
+        nature, the story is more complicated, where packages in the
+        same profile need to be somewhat compatible with each other. To
+        my understanding, the R packages in a profile are placed in a
+        `site-library` directory in the profile, and inside are
+        symbolic links to real directory of each R package. Currently
+        on my system, my `ds` profile for data science things:
+
+        ```shell
+        $ which R
+        /home/peter/guix_extra_profiles/ds/bin/R
+        $ ls /home/peter/guix_extra_profiles/ds
+        bin  etc  include  lib  libexec  manifest  sbin  share  site-library
+        $ ls /home/peter/guix_extra_profiles/ds/site-library/
+        abind       cachem        commonmark   devtools        forcats   ggsci      gtools       jquerylib       lintr         miniUI      pillar       ps             readxl       RPostgreSQL  SHAPforxgboost  survMisc     utf8          xtable
+        askpass     callr         conquer      dials           foreach   ggsignif   hardhat      jsonlite        listenv       minqa       pkgbuild     purrr          recipes      rprojroot    shiny           svglite      vctrs         yaml
+        assertthat  car           corrplot     DiceDesign      foreign   ggtext     haven        KernSmooth      lme4          modeldata   pkgconfig    quantreg       rematch      rsample      shinyjs         sys          viridisLite   yardstick
+        backports   carData       covr         diffobj         formatR   ggthemes   highr        km.ci           lubridate     modelr      pkgload      R6             rematch2     RSelenium    slider          systemfonts  waldo         zip
+        base64enc   caTools       cowplot      digest          fs        gh         hms          KMsurv          magrittr      munsell     plyr         ranger         remotes      rstatix      sourcetools     testthat     warp          zoo
+        BBmisc      cellranger    cpp11        doMC            furrr     gitcreds   htmltools    knitr           maptools      mvtnorm     png          rappdirs       repr         rstudioapi   sp              tibble       wdman
+        BH          checkmate     crayon       dplyr           future    glmnet     htmlwidgets  labeling        markdown      nlme        polyclip     rbenchmark     reprex       R.utils      SparseM         tidymodels   whisker
+        binman      class         credentials  DT              gdata     globals    httpuv       languageserver  MASS          nloptr      polynom      R.cache        rex          rversions    spatial         tidyr        withr
+        bitops      cli           crosstalk    e1071           generics  glue       httr         later           Matrix        nnet        praise       rcmdcheck      rio          rvest        SQUAREM         tidyselect   workflows
+        blob        clipr         curl         ellipsis        gert      gmodels    infer        lattice         MatrixModels  numDeriv    prettyunits  RColorBrewer   rlang        sass         statmod         tidyverse    xfun
+        boot        cluster       cyclocomp    evaluate        ggExtra   gower      ini          lava            matrixStats   openssl     pROC         Rcpp           rmarkdown    scales       stringi         timeDate     xgboost
+        brew        codetools     data.table   exactRankTests  ggforce   GPfit      ipred        lazyeval        maxstat       openxlsx    processx     RcppArmadillo  R.methodsS3  selectr      stringr         tinytex      XML
+        brio        collections   DBI          fansi           ggplot2   gridExtra  isoband      lhs             memoise       parallelly  prodlim      RcppEigen      R.oo         semver       styler          tune         xml2
+        broom       colorspace    dbplyr       farver          ggpubr    gridtext   iterators    lifecycle       mgcv          parsnip     progress     RCurl          roxygen2     sessioninfo  survival        tweenr       xmlparsedata
+        bslib       colourpicker  desc         fastmap         ggrepel   gtable     jpeg         lightgbm        mime          pbkrtest    promises     readr          rpart        shape        survminer       usethis      xopen
+        $ tree /home/peter/guix_extra_profiles/ds/site-library/ | head
+        /home/peter/guix_extra_profiles/ds/site-library/
+        ├── abind -> /gnu/store/54kzkqlfds1da34g66hy881b51q844ly-r-abind-1.4-5/site-library/abind
+        ├── askpass -> /gnu/store/hznmrksfikc75lvs6plywp09vwzhcjbj-r-askpass-1.1/site-library/askpass
+        ├── assertthat -> /gnu/store/bcy712pqmjs86xwchjkq8af701zs76n3-r-assertthat-0.2.1/site-library/assertthat
+        ├── backports -> /gnu/store/1ld20n5abycl0x9ma67zk17mgm390hji-r-backports-1.2.1/site-library/backports
+        ├── base64enc -> /gnu/store/3pkyzwliy76mrcc56rxp2yh4w0g9130f-r-base64enc-0.1-3/site-library/base64enc
+        ├── BBmisc -> /gnu/store/7lm3ivlg7iwz0g9m1h3yl2h5jmn0cp9n-r-bbmisc-1.11/site-library/BBmisc
+        ├── BH -> /gnu/store/d9mcnkkn1crvnjz337h3cznfdnvm2y4c-r-bh-1.75.0-0/site-library/BH
+        ├── binman -> /gnu/store/mwzvczl535j0cqr4yjw48yvs71b5m290-r-binman-0.1.2/site-library/binman
+        ├── bitops -> /gnu/store/mdj7ad7pdm4ljqmxl41gdvi7bk3djwx1-r-bitops-1.0-6/site-library/bitops
+        ```
+
+        And I have experienced Guix errors about R package version
+        conflicts if I installed some very old and very new R packages
+        in the same profile, that's why I now put data science packages
+        in a separate profile.
+    -   A: To avoid problems, we can either create different profiles
+        for different sets of compatible packages, and activate the
+        profile as needed. Alternatively, we can use `guix environment`
+        to spawn a temporary shell where the designated packages are
+        accessible, which is a great way to manage per-project
+        dependencies.
+-   Q: Is it possible to record a set of packages in a file, and then
+    instantiate the packages as a profile in just one command?
+    -   A: Sure, this can be done by using a manifest file, which
+        records the list of packages wanted, then you can use `guix
+               package -m your_manifest` to change the default (you can change
+        the profile to act on by using the `-p` option) profile. An
+        example of a manifest file which contains R and some R packages
+        is:
+
+        ```scheme
+        ;; for data science stuffs, here mainly R, and some python
+        (specifications->manifest
+          (list ;;"r-languageserver"
+                "r"
+                "r-yaml"
+                "r-xml2"
+                "r-xgboost"
+                "r-tidymodels"
+                "r-tidyverse"
+                "r-survminer"
+                "r-styler"
+                "r-shiny"
+                "r-rvest"
+                "r-rbenchmark"
+                "r-ranger"
+                "r-purrr"
+                "r-lubridate"
+                "r-jsonlite"
+                "r-gridextra"
+                "r-gmodels"
+                "r-glue"
+                "r-glmnet"
+                "r-ggthemes"
+                "r-ggplot2"
+                "r-foreach"
+                "r-formatr"
+                "r-e1071"
+                "r-domc"
+                "r-devtools"
+                "r-data-table"
+                "r-blob"
+                "r-shapforxgboost"
+                "r-rcpp"
+                "r-rselenium"
+                "r-rpostgresql"
+                "r-dt"
+                ;;
+                "python"
+                "python-ipython"
+                ))
+
+        ```
+
+
+### Package version pinning and guix environment {#package-version-pinning-and-guix-environment}
+
+-   Q: I understand that we can use profiles to avoid package version
+    conflicts, much like we do in virtualenv, can you elaborate more
+    on `guix environment`?
+    -   A: You can image `guix environment` as a temporary profile
+        (just as every profile has its own path in `/gnu/store`), and
+        you are put a shell with the environment `GUIX_ENVIRONMENT`
+        pointing to its path, and `PATH` is setup such that the `bin`
+        of this temporary profile in at the front of `PATH`. The set of
+        packages can be specified either as arguments in calling the
+        command, or in a manifest file. Once we exit the shell, the
+        temporary profile is still cached in `/gnu/store`, just as with
+        other packages, so that the next time you want an environment
+        with the same set of packages, it can be reused (with a little
+        time for Guix to figure out that the profile is already there)
+        instead of rebuilding all the packages. E.g. if I do spawn an
+        environment with R by `guix environment --ad-hoc r` on my
+        current system, once in the shell:
+
+        ```shell
+        $ guix environment --ad-hoc r
+        [dev]$ echo $GUIX_ENVIRONMENT
+        /gnu/store/zwz604am03q0n3vwyca3hvfd5lpb0k8z-profile
+        [dev]$ echo $PATH
+        /gnu/store/zwz604am03q0n3vwyca3hvfd5lpb0k8z-profile/bin:/home/peter/guix_extra_profiles/other/bin:/home/peter/guix_extra_profiles/other/sbin:/home/peter/guix_extra_profiles/games/bin:/home/peter/guix_extra_profiles/games/sbin:/home/peter/guix_extra_profiles/ds/bin:/home/peter/guix_extra_profiles/ds/sbin:/home/peter/.guix-profile/bin:/home/peter/.guix-profile/sbin:/run/setuid-programs:/home/peter/.config/guix/current/bin:/home/peter/.guix-profile/bin:/home/peter/.guix-profile/sbin:/run/current-system/profile/bin:/run/current-system/profile/sbin
+        [dev]$ which R
+        /gnu/store/zwz604am03q0n3vwyca3hvfd5lpb0k8z-profile/bin/R
+        ```
+
+        Note that in this temporary environment, what packages R can
+        see depends on whether there are other R packages installed in
+        other profiles already in effect.
+    -   A: Note that it is possible to control how "isolated" this
+        environment is. E.g. by limiting the `PATH` not to include the
+        `PATH` of the current shell, the spawn shell is more
+        isolated. Moreover, by using container capability of the Linux
+        kernel, it is possible to also isolate the file system and the
+        network, in addition to the accessible packages.
+-   Q: How to pin versions of packages?
+    -   A: Recall that the package definitions are maintained as
+        _channels_ which are essentially git repositories, and
+        therefore if we record the commit of each of the git repositories, we
+        then have a snapshot of package definitions, which allows us to
+        reproducibly build the exact versions of selected packages.
+    -   A: In Guix, the commits of channels can be conveniently
+        recorded in a channels file using the `guix describe` command,
+        and you can use the `-f` option to choose a convenient format,
+        e.g. using `guix describe -f channels` results in a channel
+        file suitable for the `guix time-machine` command. The `guix
+               time-machine` allows Guix actions on packages definitions at
+        certain point in time, which can be specified as commit or more
+        conveniently a channels file.
+    -   A: E.g. by combining `guix time-machine` and `guix
+               environment`, we can easily reproduce the exact versions of
+        desired set of packages, by using one channel file for
+        commits, and one manifest file for set of packages. These two
+        files can be easily version controlled per-project, and
+        therefore can be conveniently used for per-project dependency
+        management. We will see example in a later post of this series.
+
+
+### Transactional package management {#transactional-package-management}
+
+-   Q: What about the "transactional" part?
+    -   A: "Transactional" means each set of action(s) either succeeds
+        as a whole, or fails as a whole, there would not be half
+        states. E.g. when you try to install a list of packages in
+        one `guix package` command invocation, if it was interrupted in
+        the middle (e.g. by the user, or there was a power outage),
+        then none of the packages will be "installed", although some of
+        the completed ones may then be present in `/gnu/store`. And you
+        can then repeat the same command, the already completed and
+        cached packages will be quickly finished. Therefore, there is
+        no worry of half-completed states of the set of installed
+        packages.
+    -   A: Guix achieves this transactional behavior by using similar
+        techniques as in database management system to maintain the
+        integrity of the cache. When each package is being built, lock
+        files would be created to indicate that it is under
+        construction, and once a package is completed and then the
+        content of its path under `/gnu/store` will not longer be
+        modified, the lock file is removed. Therefore Guix knows which
+        paths are complete and valid, and can maintain the integrity of
+        the cache.
+    -   A: Another part to the transactional behavior is the
+        "atomicity" of renaming a (local) file, which is an assumed
+        property of Linux. Since each set of action(s) will create a
+        profile, either the temporary profile for `guix environment`,
+        or the another generation of a profile, which is basically a
+        set of symbolic links. Therefore, Guix can create a set of
+        paths in `gnu/store` as needed, and rename the symbolic link
+        for the profile to finish the action(s), in an essentially atomic way.
+
+
+### Guix system {#guix-system}
+
+-   Q: What about Guix system? Let me see, since a Linux distribution
+    is more or less a set of packages and some associated
+    configuration working together (besides the Linux kernel), so we
+    can apply the Guix method to manage a whole Linux distribution?
+    -   A: Exactly. For example, we use a manifest file to ease our
+        management of packages, imagine applying similar idea to users,
+        groups, and different services of a Linux distribution,
+        i.e. use a plain text _system configuration_ file to
+        "declaratively" specify these (well, maybe user password are
+        better specified in other ways, because we often want to
+        version control this configuration file). Whenever we want to
+        update the "state", e.g. add or remove users, or change some
+        information of users, add or remove system services, then
+        instead of _mutating_ the system imperatively, we instead
+        modify the system configuration file, and re-apply it to
+        reconfigure the system. This has the advantage that the system
+        state should be recorded in the system configuration at all
+        time, which allows us to re-apply the same configuration to a
+        different machine to replicate the setup. Furthermore, the
+        changes to the system can be easily recorded by version
+        controlling this system configuration file.
+
+
+## What's next? {#what-s-next}
+
+In this second part we had a closer look at what Guix is, next time we
+will discuss why bother with Guix when there are alternatives that
+solve similar problems.
