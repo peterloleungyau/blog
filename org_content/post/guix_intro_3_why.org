@@ -12,7 +12,7 @@
 #+AUTHOR:
 #+HUGO_CUSTOM_FRONT_MATTER: :author "Peter Lo"
 
-#+HUGO_DRAFT: true
+#+HUGO_DRAFT: false
 
 This is the third part of a brief introduction to the Guix functional
 package manager, and how it could be used to manage dependencies of
