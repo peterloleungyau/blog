@@ -1,1 +1,6 @@
 *~
+.Rhistory
+public/
+static-old/
+static/
+themes/
