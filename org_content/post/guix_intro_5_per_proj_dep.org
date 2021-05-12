@@ -12,7 +12,7 @@
 #+AUTHOR:
 #+HUGO_CUSTOM_FRONT_MATTER: :author "Peter Lo"
 
-#+HUGO_DRAFT: false
+#+HUGO_DRAFT: true
 
 This is the fifth part of a brief introduction to the Guix functional
 package manager, and how it could be used to manage dependencies of
@@ -406,6 +406,29 @@ commands.
     77  3 99.89 0.00037
     78  3 99.90 0.00034
   #+end_src
+
+* A possible way to manage dependency using Guix on Jenkins
+  We briefly discuss using Guix to help manage dependencies for jobs
+  running on Jenkins.
+
+  - basic ideas:
+    - the Guix package manager can be installed along with Jenkins on a Linux distribution
+    - the Jenkins can a single master node, or one master node with one or more worker nodes
+    - each master or worker node that may need to run jobs needs to have the Guix package manager installed
+      - if private channels are used, they need to be configured in each master or worker node
+    - optionally, one or more nodes can also be a substitution server by running =guix publish=
+      - the Guix in each master or worker node would need to be configured to have this extra substitution server
+      - 
+    - the dependencies of each project (or job) is recorded in the
+      associated git repository, e.g. by having one manifest file
+      =pkgs.scm=, and one channels files =channels.scm=.
+    - the Jenkins job can run =guix time-machine= and =guix
+      environment= as discussed above:
+      #+begin_src shell
+        guix time-machine -C channels.scm -- environment -m pkgs.scm -- THE_COMMAND_HERE
+      #+end_src
+
+TODO: Jenkins illutration
 
 * What's next?
   In this part we showed a little demo of using Guix to manage
