@@ -12,7 +12,7 @@
 #+AUTHOR:
 #+HUGO_CUSTOM_FRONT_MATTER: :author "Peter Lo"
 
-#+HUGO_DRAFT: true
+#+HUGO_DRAFT: false
 
 This is the fifth part of a brief introduction to the Guix functional
 package manager, and how it could be used to manage dependencies of
@@ -411,10 +411,13 @@ commands.
   We briefly discuss using Guix to help manage dependencies for jobs
   running on Jenkins.
 
+  #+CAPTION: Illustration of using Guix for dependency management with Jenkins
+  [[file:guix_intro_jenkins.png]]
+
   - *Basic ideas:*
     - the Guix package manager can be installed along with Jenkins on
       a Linux distribution
-    - the Jenkins can a single master node, or one master node with
+    - the Jenkins can be a single master node, or one master node with
       one or more worker nodes
     - each master or worker node that may need to run jobs needs to
       have the Guix package manager installed
@@ -449,8 +452,6 @@ commands.
       - will not "forget" to update the dependencies in some worker nodes
       - there will not conflicts of dependencies for different
         projects, because each job is run in a =guix environment=
-
-TODO: Jenkins illutration
 
 * What's next?
   In this part we showed a little demo of using Guix to manage

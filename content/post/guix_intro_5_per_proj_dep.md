@@ -428,6 +428,54 @@ Call:  glmnet(x = iris_x, y = is_setosa, family = "binomial")
 ```
 
 
+## A possible way to manage dependency using Guix on Jenkins {#a-possible-way-to-manage-dependency-using-guix-on-jenkins}
+
+We briefly discuss using Guix to help manage dependencies for jobs
+running on Jenkins.
+
+{{< figure src="/ox-hugo/guix_intro_jenkins.png" caption="Figure 1: Illustration of using Guix for dependency management with Jenkins" >}}
+
+-   **Basic ideas:**
+    -   the Guix package manager can be installed along with Jenkins on
+        a Linux distribution
+    -   the Jenkins can be a single master node, or one master node with
+        one or more worker nodes
+    -   each master or worker node that may need to run jobs needs to
+        have the Guix package manager installed
+        -   if private channels are used, they need to be configured in
+            each master or worker node
+    -   optionally, one or more nodes can also be a substitution server by running `guix publish`
+        -   the Guix in each master or worker node would need to be
+            configured to have this extra substitution server
+        -   if there is one node in the same network used for development
+            (e.g. an VM in AWS Virtual Private Cloud), it is an ideal
+            candidate to serve as the substitution server because during
+            development, the needed packages for a project need to be
+            downloaded or built anyway, so can be shared to other worker
+            nodes when the script is later run in batch mode, to save
+            re-building the packages in the worker nodes.
+    -   the dependencies of each project (or job) is recorded in the
+        associated git repository, e.g. by having one manifest file
+        `pkgs.scm`, and one channels files `channels.scm`.
+    -   the Jenkins job can run `guix time-machine` and `guix
+              environment` as discussed above:
+
+        ```shell
+        guix time-machine -C channels.scm -- environment -m pkgs.scm -- THE_COMMAND_HERE
+        ```
+-   **Benefits:**
+    -   due to the reproducibility of Guix, we can be confident that the
+        packages used in development are the exact same versions as in
+        the batch jobs
+    -   the dependencies of each projects are also version controlled in
+        the project git repository.
+    -   this method is hassle-free:
+        -   no need to manually install needed dependencies in needed worker nodes
+        -   will not "forget" to update the dependencies in some worker nodes
+        -   there will not conflicts of dependencies for different
+            projects, because each job is run in a `guix environment`
+
+
 ## What's next? {#what-s-next}
 
 In this part we showed a little demo of using Guix to manage
