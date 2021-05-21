@@ -1,0 +1,799 @@
+#+HUGO_BASE_DIR: ../../
+#+HUGO_SECTION: post
+
+#+HUGO_AUTO_SET_LASTMOD: nil
+
+#+TITLE: Guix Introduction Part 6: R Development with Guix
+
+#+DATE: 2021-05-17
+
+#+HUGO_TAGS: "Guix" "Functional Package Manager" "Reproducibility"
+#+HUGO_CATEGORIES: "Guix"
+#+AUTHOR:
+#+HUGO_CUSTOM_FRONT_MATTER: :author "Peter Lo"
+
+#+HUGO_DRAFT: true
+
+This is the sixth part of a brief introduction to the Guix functional
+package manager, and how it could be used to manage dependencies of
+projects, much like virtual environments for Python, but with much
+larger scope.
+
+This time we explore the ways to use Guix for per-project dependency
+management, for R development using emacs, neovim, jupyter lab,
+VSCode, Sublime and RStudio. Here we demonstrate with running Guix
+inside qemu VM in MacOS. This setup should work for either local
+development with Linux host running Guix package manager, or when
+connecting to a remote server running Guix package manager. Although
+we focus on R development for data science projects, similar setup
+should also work for Python or other languages.
+
+# summary
+
+* Basic Idea
+In previous posts (e.g. [[./guix_intro_5_per_proj_dep.org][Guix Introduction Part 5: Per-Project
+Depedency Management]]), we introduced =guix environment= together with
+=guix time-machine= to use a manifest file (=pkgs.scm=) for packages
+and a channel file (=channels.scm=) for exact package versions, to
+create a shell with per-project dependencies. It is intuitive that if
+we somehow spawn a shell with the needed R version and other
+dependencies, and point the development tool (IDE or text editors) to
+the proper R, then things should work as usual.
+
+Depending on the way that the development tool connects to R, there
+are 2 ways that this can work:
+
+1. first spawn a shell with needed dependencies, then start the tool
+
+   - some development tools (by default) simply look up the R
+     executable or R kernel from =PATH=, e.g. emacs, (neo)vim, Rstudio
+     Desktop version, jupyter lab, so one way is to first spawn the
+     shell using =guix time-machine= and =guix environment= (or the
+     prepared alias or helper script, as we show below), then start
+     the tool inside this shell.
+   - the downside is that you would need to restart your development
+     tool if the dependencies is changed in the middle of development,
+     e.g. while your are writing some code, then realize that you need
+     to use another R package not listed in the manifest file, then you would need to:
+     + exit the development tool and the spawn shell
+     + edit the manifest file =pkgs.scm= to add the R package
+     + respawn the shell
+     + restart the development tool
+
+2. first start the development tool, then start R throught a wrapper
+   script to first spawn the shell with needed dependencies, possibly
+   manually in a terminal
+
+   - 
+
+* Setup Guix
+** TODO run guix in qemu in macOS
+- [X] install debian vm
+  - used debian-10.8.0-amd64-netinst.iso to install on a 50G qcow2 disk
+    #+BEGIN_SRC shell
+    qemu-img create -f qcow2 debian-10.8.0-guix.img 50G
+    #+END_SRC
+  - a minimal install without desktop environment, but with ssh server
+  - install a few things:
+    #+BEGIN_SRC shell
+      apt-get update
+      apt-get install git
+      apt-get sudo
+      # add to sudoer
+      usermod -a -G sudo guest
+      # ssh server
+      apt-get install openssh-server
+      sudo systemctl enable ssh
+    #+END_SRC
+  - guest account with sudo
+    - username: guest
+    - password: guest
+  - config ssh
+    - https://devconnected.com/how-to-install-and-enable-ssh-server-on-debian-10/
+    - add "PermitRootLogin no" to /etc/ssh/sshd_config
+    - forward port 10022 to 22 in qemu
+    - generate ssh key
+      - https://devconnected.com/how-to-set-up-ssh-keys-on-debian-10-buster/
+      - in the vm
+        #+BEGIN_SRC shell
+          # generate ssh key, save to id_vm_rsa
+          ssh-keygen -t rsa -b 4096 -C "guest@debianguix.org"
+        #+END_SRC
+    - add to =~/.ssh/config= in the host for convenience, so that we can ssh into the vm with just =ssh vm=
+      - reference
+        - https://www.xmodulo.com/how-to-speed-up-x11-forwarding-in-ssh.html?format=pdf
+      - add to =~/.ssh/config=
+      #+BEGIN_SRC text
+        Host vm
+          HostName localhost
+          Port 10022
+          AddKeysToAgent yes
+          UseKeychain yes
+          User guest
+          ForwardX11 yes
+          Compression yes
+          # Ciphers blowfish-cbc,arcfour # your ssh client may not support the particular cipher, check with "ssh -Q cipher"
+          ConnectTimeout 20
+          StrictHostKeyChecking no
+          UserKnownHostsFile /dev/null
+          IdentityFile ~/.ssh/id_rsa
+      #+END_SRC
+- [X] install guix package manager in it
+  - binary installation: https://guix.gnu.org/manual/en/guix.html#Binary-Installation
+    Run as root:
+    #+BEGIN_SRC shell
+      apt-get install gpg
+      cd /tmp
+      wget https://git.savannah.gnu.org/cgit/guix.git/plain/etc/guix-install.sh
+      chmod +x guix-install.sh
+      ./guix-install.sh
+      # import the gpg key as instructed, then run the script again
+    #+END_SRC
+  - change debian locale to en_US.utf8, but select "None" as the default
+    - https://wiki.debian.org/Locale
+  - install guix locale as user
+    #+BEGIN_SRC shell
+      guix install glibc-locales
+    #+END_SRC
+  - add to =~/.bashrc=
+    #+BEGIN_SRC shell
+      if [ -n "$GUIX_ENVIRONMENT" ]
+      then
+          export PS1="\u@\h \w [dev]\$ "
+      fi
+
+    #+END_SRC
+  - add to =~/.profile= (or =~/.bash_profile=)
+    #+BEGIN_SRC shell
+      export GUIX_LOCPATH=$HOME/.guix-profile/lib/locale
+      GUIX_PROFILE="/home/guest/.guix-profile"
+      . "$GUIX_PROFILE/etc/profile"
+
+    #+END_SRC
+- [-] setup for running R
+  - [X] some common thing:
+    - [X] prepare a command (call it "work") in the vm (an executable shell script) to
+      - find channels.scm and pkgs.scm from the current directory up to root
+      - spawn guix environment
+      - the command also allows extra arguments to be passed, e.g. to execute vim
+      - put at =/usr/local/bin/work=, and make it executable
+        #+BEGIN_SRC shell
+          #!/bin/bash
+
+          # adapted from https://unix.stackexchange.com/a/22215
+          findup () {
+              if [ -e "./$1" ]
+              then
+                  echo "."
+              else
+                  path=$(pwd)
+                  while [[ "$path" != "" && ! -e "$path/$1" ]]; do
+                      path=${path%/*}
+                  done
+                  echo "$path"
+              fi
+          }
+
+          cfpath=$(findup channels.scm)
+          pfpath=$(findup pkgs.scm)
+
+          # https://unix.stackexchange.com/a/415028
+          channel_file=${cfpath:+${cfpath}/}channels.scm
+          pkgs_file=${pfpath:+${pfpath}/}pkgs.scm
+
+          exec guix time-machine -C "${channel_file}" -- environment --ad-hoc -m "${pkgs_file}" "$@"
+
+        #+END_SRC
+    - [X] prepare a command (call it "rwork") in the vm to call R in the spawn environment
+      - put at =/usr/local/bin/rwork=, and make it executable
+        #+BEGIN_SRC shell
+          #!/bin/bash
+
+          # add r-dt for DT to be loadable
+          exec work r-dt -- R --no-save "$@"
+
+        #+END_SRC
+    - [X] prepare radian to vm
+      - https://github.com/shrektan/radian
+      - can import radian from pypi, then install, but encounter glibc version mismatch when in different guix environment
+      - so also install radian in guix, but seems still may have glibc version mismatch unless we build the radian together with the environment
+      - also, radian is not currently in the official guix repository, so we import with =guix import pypi -r radian= to get a skeleton, but need some fiddling to get it to build:
+        - need to add importing of gnu modules at the top
+        - need to disable the tests in the few packages including radian, rchitect, lineedit to build without error
+        - need to fix some inputs, especially python-pytest-runner
+        - need to use newer version of python-pyte (at least 0.8.0), so included a modified definition of python-pyte
+        - the resulting file: to be put in the vm as =~/extra/radian.scm=
+          #+BEGIN_SRC scheme
+            (use-modules (guix)
+                         (guix licenses)
+                         (guix download)
+                         (guix git-download)
+                         (gnu packages statistics)
+                         (gnu packages python)
+                         (gnu packages python-science)
+                         (gnu packages python-xyz)
+                         (gnu packages libffi)
+                         (gnu packages check)
+                         (gnu packages terminals)
+                         (guix build-system python))
+
+            (define-public python-lineedit
+              (package
+                (name "python-lineedit")
+                (version "0.1.6")
+                (source
+                  (origin
+                    (method url-fetch)
+                    (uri (pypi-uri "lineedit" version))
+                    (sha256
+                      (base32
+                        "0gvggy22s3qlz3r5lrwr5f4hzwbq7anyd2vfrzchldaf2mwm8ygl"))))
+                (build-system python-build-system)
+                (arguments `(#:tests? #f))
+                (propagated-inputs
+                  `(("python-pygments" ,python-pygments)
+                    ("python-six" ,python-six)
+                    ("python-wcwidth" ,python-wcwidth)))
+                (native-inputs
+                  `(("python-pexpect" ,python-pexpect)
+                    ("python-ptyprocess" ,python-ptyprocess)
+                    ("python-pyte" ,python-pyte)
+                    ("python-pytest" ,python-pytest)
+                    ("python-pytest-cov" ,python-pytest-cov)))
+                (home-page "https://github.com/randy3k/lineedit")
+                (synopsis
+                  "An readline library based on prompt_toolkit which supports multiple modes")
+                (description
+                  "An readline library based on prompt_toolkit which supports multiple modes")
+                (license #f)))
+
+            (define-public python-rchitect
+              (package
+                (name "python-rchitect")
+                (version "0.3.30")
+                (source
+                  (origin
+                    (method url-fetch)
+                    (uri (pypi-uri "rchitect" version))
+                    (sha256
+                      (base32
+                        "1bg5vrgp447czgmjjky84yqqk2mfzwwgnf0m99lqzs7jq15q8ziv"))))
+                (build-system python-build-system)
+                (arguments `(#:tests? #f))
+                (propagated-inputs
+                  `(("python-cffi" ,python-cffi)
+                    ("python-six" ,python-six)))
+                (native-inputs
+                  `(("python-pytest" ,python-pytest)
+                    ("python-pytest-runner" ,python-pytest-runner)
+                    ("python-pytest-cov" ,python-pytest-cov)
+                    ("python-pytest-mock" ,python-pytest-mock)))
+                (home-page "https://github.com/randy3k/rchitect")
+                (synopsis "Mapping R API to Python")
+                (description "Mapping R API to Python")
+                (license #f)))
+
+            (define-public python-pyte
+              (package
+                (name "python-pyte")
+                (version "0.8.0")
+                (source
+                 (origin
+                   (method url-fetch)
+                   (uri (pypi-uri "pyte" version))
+                   (sha256
+                    (base32
+                     "1ic8b9xrg76z55qrvbgpwrgg0mcq0dqgy147pqn2cvrdjwzd0wby"))))
+                (build-system python-build-system)
+                (arguments
+                 '(#:phases
+                   (modify-phases %standard-phases
+                     (add-after 'unpack 'remove-failing-test
+                       ;; TODO: Reenable when the `captured` files required by this test
+                       ;; are included in the archive.
+                       (lambda _
+                         (delete-file "tests/test_input_output.py")
+                         #t)))))
+                (propagated-inputs
+                 `(("python-wcwidth" ,python-wcwidth)))
+                (native-inputs
+                 `(("python-pytest-runner" ,python-pytest-runner)
+                   ("python-pytest" ,python-pytest)))
+                (home-page "https://pyte.readthedocs.io/")
+                (synopsis "Simple VTXXX-compatible terminal emulator")
+                (description "@code{pyte} is an in-memory VTxxx-compatible terminal
+            emulator.  @var{VTxxx} stands for a series of video terminals, developed by
+            DEC between 1970 and 1995.  The first and probably most famous one was the
+            VT100 terminal, which is now a de-facto standard for all virtual terminal
+            emulators.
+
+            pyte is a fork of vt102, which was an incomplete pure Python implementation
+            of VT100 terminal.")
+                (license lgpl3+)))
+
+            (define-public python-radian
+              (package
+                (name "python-radian")
+                (version "0.5.10")
+                (source
+                  (origin
+                    (method url-fetch)
+                    (uri (pypi-uri "radian" version))
+                    (sha256
+                      (base32
+                        "0plkv3qdgfxyrmg2k6c866q5p7iirm46ivhq2ixs63zc05xdbg8s"))))
+                (build-system python-build-system)
+                (arguments `(#:tests? #f))
+                (propagated-inputs
+                  `(("python-lineedit" ,python-lineedit)
+                    ("python-pygments" ,python-pygments)
+                    ("python-rchitect" ,python-rchitect)
+                    ("python-six" ,python-six)))
+                (native-inputs
+                  `(("python-coverage" ,python-coverage)
+                    ("python-pexpect" ,python-pexpect)
+                    ("python-ptyprocess" ,python-ptyprocess)
+                    ("python-pytest-runner" ,python-pytest-runner)
+                    ("python-pyte" ,python-pyte)
+                    ("python-pytest" ,python-pytest)))
+                (home-page "https://github.com/randy3k/radian")
+                (synopsis "A 21 century R console")
+                (description "A 21 century R console")
+                (license #f)))
+
+            ;;
+            python-radian
+
+          #+END_SRC
+        - this file can be added to =guix environment= call with the =-l= option, so that radian is built together with other packages for the project
+    - [X] prepare a executable shell script (call it "rdwork") in the vm to call radian in the spawn environment
+      - put at =/usr/local/bin/rdwork=, and make it executable
+        #+BEGIN_SRC shell
+          #!/bin/bash
+
+          # add r-dt for DT to be loadable
+          exec work r-dt -l ~/extra/radian.scm -- radian "$@"
+
+        #+END_SRC
+    - [X] for X forwarding
+      - [X] install XQuartz on Mac
+        - https://www.xquartz.org/
+      - [X] add =xhost + 127.0.0.1= to the qemu starting script, before starting the vm
+      - [X] use X forwarding in ssh
+        - either use =ssh +XC vm= to connect, or
+        - add =ForwardX11 yes= to =~/.ssh/config= as shown above
+        - for R DT to work inside VM, install a browser
+          - e.g. Firefox
+            #+BEGIN_SRC shell
+            sudo apt-get install firefox-esr
+            #+END_SRC
+          - or use a more light-weight one such as [[https://astian.org/en/midori-browser/][midori]], which can and should be installed through guix (to avoid dynamic library problem in different guix environment):
+            #+BEGIN_SRC shell
+            guix package -i midori
+            #+END_SRC
+        - and DT needs the "browser" option to point to a browser, e.g. firefox. You may add the following to =~/.Rprofile=, create the file =~/.Rprofile= if it does not exist:
+          #+BEGIN_SRC R
+            # for DT::datatable to work, you may use other browser you like, if it is installed on the system
+            options(browser = "midori") # alternative
+            # options(browser = "firefox") # alternative
+
+            # can consider overriding View as DT::datatable for convenience, as the default View is not very good in X forwarding
+            if(requireNamespace("DT", quietly = T)) {View <- DT::datatable}
+          #+END_SRC
+  - [ ] for rstudio
+    - idea:
+      - use the same idea as in https://github.com/grst/rstudio-server-conda
+      - the idea is to start rstudio server in non-daemon mode, and does not start it as a service
+      - then we can use guix environment to start a new shell with needed dependency, then start rstudio server
+      - then can connect in the browser, if we setup port forwarding properly
+    - setup:
+      - install rstudio server in the VM, which is currently a Debian 10
+        - follow https://rstudio.com/products/rstudio/download-server/debian-ubuntu/ for your Linux
+        - for the current vm, I therefore use:
+          #+BEGIN_SRC shell
+            sudo apt-get install gdebi-core
+            wget https://download2.rstudio.org/server/bionic/amd64/rstudio-server-1.4.1106-amd64.deb
+            sudo gdebi rstudio-server-1.4.1106-amd64.deb
+          #+END_SRC
+      - disable and stop rstudio server service in the VM
+        #+BEGIN_SRC shell
+          sudo systemctl disable rstudio-server.service
+          sudo systemctl stop rstudio-server.service
+        #+END_SRC
+    - usage:
+  - [X] jupyter lab
+    - idea:
+      - to install jupyter lab in the VM, to use with R kernel
+      - then use "work" to get the guix environment we want, to start jupyter
+      - then connect from browser with port forwarding, then we have nice graphics, just as with any jupyter notebook
+    - [X] setup:
+      - one way is to ust guix-jupyter
+        - https://hpc.guix.info/blog/2019/10/towards-reproducible-jupyter-notebooks/
+        - it allows specifying guix environment within the notebook iteself
+        - so can pin the versions of the needed packages
+        - but this will then be different from using other approaches here
+        - so this method is for reference, and let for the reader to explore
+      - [X] for consistency, the jupyter and R kernels should be installed in the same guix environment along with other project packages
+        - basically we need
+          - jupyter
+          - r-irkernel for the R kernel
+          - r-irdisplay for rich display capabilities
+          - Optional, python-ipykernel for python kernel
+        - so prepare an executable shell script at =/usr/local/bin/jrwork=
+          #+BEGIN_SRC shell
+            #!/bin/bash
+
+            # add those for jupyter
+            exec work jupyter r-irkernel r-irdisplay -- jupyter notebook "$@"
+
+          #+END_SRC
+    - usage:
+      - ssh into the VM
+      - go to the project directory
+      - start jupyter with dependencies using =jrwork=
+      - once jupyter is started, note the port number of the url, e.g. if the link is "http://localhost:8890/?token=d4bfa08127d33e9e09820ef3fc3c135ac6086f78e459fe2e", the port *inside VM* is 8890
+      - do ssh port forwarding
+        - reference: https://www.ssh.com/ssh/tunneling/example
+        - the easiest way is to map the same port number in your local machine to the port number inside VM, but you may choose a different port number (don't be too small, or it may be restricted by your OS)
+        - in another terminal in you local machine, ssh with port forwarding
+        - the general syntax of ssh port forwarding into the VM is =ssh -L xxx:localhost:yyy=, where =xxx= is the local port number you like, and =yyy= is the port number inside the VM
+      - browser the url for jupyter
+        - in your local browser, paste the link printed by jupyter in the VM, but remember to change the port number to be your chosen local port number
+      - then start using jupyter
+      - when done
+        - at the browser, press quit and logout
+        - close connection of the ssh for port forwarding
+        - close the original connection and exit if appropriate
+  - [-] for vscode
+    - idea:
+      - can use Remote-SSH plugin
+        - which essentially will install a VSCode in the vm
+        - then allows us to use VSCode as if it is local
+      - then configure the remote one for R programming
+        - change the R executable name to be "rwork" to use the proper dependencies using guix
+    - [-] setup:
+      - [X] prepare for R languageserver needed for VSCode's R LSP Client extension
+        - at the time of writing, R languageserver is not in guix's official repository, so we import it from CRAN
+          #+BEGIN_SRC shell
+            guix import cran -r languageserver > r_languageserver.scm
+          #+END_SRC
+        - then need to add something at the top to use modules needed, and at the bottom to return the =r-languageserver= package, to get a file that can be used in =guix environment= to get languageserver, together with other project packages
+          - the modified file is put in the VM at =~/extra/r_languagerserver.scm=:
+            #+BEGIN_SRC scheme
+              (use-modules (guix)
+                           (guix licenses)
+                           (guix download)
+                           (guix git-download)
+                           (gnu packages cran)
+                           (gnu packages statistics)
+                           (guix build-system r))
+
+              (define-public r-collections
+                (package
+                  (name "r-collections")
+                  (version "0.3.5")
+                  (source
+                    (origin
+                      (method url-fetch)
+                      (uri (cran-uri "collections" version))
+                      (sha256
+                        (base32
+                          "053ig88pva78wxxwya3v7cz853k563dkpgxrf2xvd0l0d9fanxmz"))))
+                  (properties `((upstream-name . "collections")))
+                  (build-system r-build-system)
+                  (home-page
+                    "https://github.com/randy3k/collections")
+                  (synopsis
+                    "High Performance Container Data Types")
+                  (description
+                    "This package provides high performance container data types such as queues, stacks, deques, dicts and ordered dicts.  Benchmarks <https://randy3k.github.io/collections/articles/benchmark.html> have shown that these containers are asymptotically more efficient than those offered by other packages.")
+                  (license expat)))
+
+              (define-public r-languageserver
+                (package
+                  (name "r-languageserver")
+                  (version "0.3.9")
+                  (source
+                    (origin
+                      (method url-fetch)
+                      (uri (cran-uri "languageserver" version))
+                      (sha256
+                        (base32
+                          "1acjzc8ar3y0g8prwnsp7k3mgvg01h73mnyb4q2s3r7wkb4aqhrv"))))
+                  (properties
+                    `((upstream-name . "languageserver")))
+                  (build-system r-build-system)
+                  (propagated-inputs
+                    `(("r-callr" ,r-callr)
+                      ("r-collections" ,r-collections)
+                      ("r-desc" ,r-desc)
+                      ("r-fs" ,r-fs)
+                      ("r-jsonlite" ,r-jsonlite)
+                      ("r-lintr" ,r-lintr)
+                      ("r-r6" ,r-r6)
+                      ("r-repr" ,r-repr)
+                      ("r-roxygen2" ,r-roxygen2)
+                      ("r-stringi" ,r-stringi)
+                      ("r-styler" ,r-styler)
+                      ("r-xml2" ,r-xml2)
+                      ("r-xmlparsedata" ,r-xmlparsedata)))
+                  (home-page
+                    "https://github.com/REditorSupport/languageserver/")
+                  (synopsis "Language Server Protocol")
+                  (description
+                    "An implementation of the Language Server Protocol for R.  The Language Server protocol is used by an editor client to integrate features like auto completion.  See <https://microsoft.github.io/language-server-protocol/> for details.")
+                  (license expat)))
+
+              ;;
+              r-languageserver
+
+            #+END_SRC
+        - [X] create an executable shell script at =/usr/local/bin/rcwork=, to add loading of languageserver with R:
+          #+BEGIN_SRC shell
+          #!/bin/bash
+
+          exec work r-dt -l ~/extra/r_languageserver.scm -- R --no-save "$@"
+
+          #+END_SRC
+        - [X] create an executable shell script at =/usr/local/bin/rcdwork=, to add loading languageserver and radian:
+          #+BEGIN_SRC shell
+          #!/bin/bash
+
+          exec work r-dt -l ~/extra/r_languageserver.scm -l ~/extra/radian.scm -- radian "$@"
+
+          #+END_SRC
+        - you are advised to run =rcwork= and =rcdwork= at least once in the project directory before proceeding, because building or downloading the packages needed for languageserver can take a while
+      - [X] install VSCode
+        - https://code.visualstudio.com/Download
+      - [X] install Remote-SSH extension
+        - search "Remote-SSH" in the extension icon in the left bar
+        - then click install
+        - then click the green "Open a Remote Window" icon at the bottom left corner to switch to the remote instance
+          - select "Connect to Host" or "Connect Current Window to Host"
+          - then select "vm" if you have already configured =.ssh/config= as above; otherwise you may configure it here
+          - if the bottom left gren icon shows something like "SSH: vm", then you have successfully connected to the remote instance
+      - [X] setup the remote VSCode environment for R
+        - https://www.r-bloggers.com/2021/01/setup-visual-studio-code-to-run-r-on-vscode-2021/
+        - [X] install [[https://marketplace.visualstudio.com/items?itemName=Ikuyadeu.r][VSCode R]] extension
+        - [X] install [[https://marketplace.visualstudio.com/items?itemName=REditorSupport.r-lsp][R LSP Client]] extension
+        - [X] install languageserver in R (needed for R LSP Client)
+          - should have been setup above
+        - [X] install radian
+          - should have been setup above
+        - [X] enable =r.bracketedPaste= for using Radian
+          - goto settings: menu "Code" -> "Preferences" -> "Settings", or use the shortcut
+          - search r.bracketedPaste, and make sure it is enabled (ticked)
+        - [X] enable =r.alwaysUseActiveTerminal= if we were to manually start R in the terminal
+          - goto settings
+          - search "r.alwaysUseActiveTerminal", tick the box to set it to True
+        - [X] Set up =r.rpath.windows=, =r.rpath.mac=, =r.rpath.linux=: Path to Radian
+          - go to settings
+          - search "r.rpath.linux", change it to =/usr/local/bin/rcwork=, the path to our R execution script
+      - [ ] check for better integration with R
+        - in particular, whether the LSP can provide completions of created objects
+    - usage:
+      - connect to VM
+        - then click the green "Open a Remote Window" icon at the bottom left corner to switch to the remote instance
+        - select "Connect to Host" or "Connect Current Window to Host"
+        - then select "vm"
+      - open folder of the project
+        - click "Open Folder" in Explorer
+        - find the project folder and click "Ok"
+      - open R in terminal
+        - if terminal is not ok yet, open one with menu "Terminal" -> "New Terminal"
+        - in the terminal (which should already be in the project directory), type =rcwork= (for plain R) or =rcdwork= (for radian)
+        - then wait untile R prompt appears
+      - then can open any R file that you want to edit, and send code (default key Command+Enter in Mac) to the terminal as needed
+      - when done, close connection
+        - click the green icon in the bottom left corner
+        - choose "Close Connection"
+  - [X] for sublime text
+    - idea:
+      - use sftp extension for editing files in the vm
+      - open terminal into the vm
+      - create a shell alias to call the command and open R or radian
+      - in the ssh session, get to desired directory, then call the alias
+      - use SendText extension to send part of source file to the terminal (where R is started) to evaluate
+    - [X] setup:
+      - [X] install sublime text 3
+      - [X] install sftp plugin
+        - https://morannachum.wordpress.com/2015/04/05/how-to-configure-a-sftp-folder-in-sublime/
+        - https://notepadhelper.com/sublime-text/ftp-connection-sftp-plugin/
+        - first install "Package Control" under "Tools"
+        - then under "Sublime Text" -> "Preferences" -> "Package Control", choose "Install package"
+        - then type "SFTP", then it will install
+        - [X] setup ssh into the server
+          - https://codexns.io/products/sftp_for_sublime/usage
+          - under "Sublime Text" -> "Preferences" -> "Package Settings" -> "SFTP" -> "Settings"
+          - under "File" -> "SFTP/FTP" -> "Setup Server"
+            - change the "host", "user", "port", "remote_path", "ssh_key_file" to match the ssh settings
+              #+BEGIN_SRC text
+                {
+                    // The tab key will cycle through the settings when first created
+                    // Visit https://codexns.io/products/sftp_for_subime/settings for help
+    
+                    // sftp, ftp or ftps
+                    "type": "sftp",
+
+                    "sync_down_on_open": true,
+                    "sync_same_age": true,
+    
+                    "host": "localhost",
+                    "user": "guest",
+                    //"password": "password",
+                    "port": "10022",
+    
+                    "remote_path": "/home/guest",
+                    //"file_permissions": "664",
+                    //"dir_permissions": "775",
+    
+                    //"extra_list_connections": 0,
+
+                    //"keepalive": 120,
+                    "connect_timeout": 30,
+                    //"ftp_passive_mode": true,
+                    //"ftp_obey_passive_host": false,
+                    "ssh_key_file": "~/.ssh/id_rsa",
+                    //"sftp_flags": ["-F", "/path/to/ssh_config"],
+    
+                    //"preserve_modification_times": false,
+                    //"remote_time_offset_in_hours": 0,
+                    //"remote_encoding": "utf-8",
+                    //"remote_locale": "C",
+                    //"allow_config_upload": false,
+                }
+              #+END_SRC
+            - save to =Packages/User/sftp_servers/=, e.g. as =vm=, note it should not have an extension
+            - create a local folder
+            - then map the folder to the remote vm
+              - open the folder in sublime
+              - right click on the folder in side bar, select map to remote
+              - then edit the config, similar to the above
+              - now can sync files between local and vm
+      - [X] install Terminus in Sublime Text
+        - settings:
+          - "256color" : true
+          - "unix_term" : "xterm-256color"
+        - key bindings:
+          - take only two, can customize as you like
+            #+BEGIN_SRC text
+              [
+                  // Toggle the default shell in panel
+                  { "keys": ["alt+`"], "command": "toggle_terminus_panel" },
+
+                  // Open a terminal tab at current file directory
+                  {
+                       "keys": ["ctrl+alt+t"], "command": "terminus_open", "args": {
+                           "cwd": "${file_path:${folder}}"
+                       }
+                  }
+              ]
+            #+END_SRC
+      - [X] install SendCode
+        - settings: can customize as you like
+          #+BEGIN_SRC text
+            {
+                "prog": "terminus",
+                "auto_expand_line": true,
+                "auto_advance" : true,
+                "auto_advance_non_empty": false,
+                "bracketed_paste_mode": false,
+                "block_start_pattern": "# ?%%|# ?\\+|# In \\[",
+                "block_end_pattern": "# ?%%|# ?\\+|#'|# In \\[",
+
+                "r" : {
+                    "prog": "terminus",
+                    // turn bracketed_paste_mode on if radian or readline 7.0 is in use
+                    "bracketed_paste_mode": true
+                },
+
+                "rmd" : {
+                    "prog": "terminus",
+                    // turn bracketed_paste_mode on if radian or readline 7.0 is in use
+                    "bracketed_paste_mode": true
+                },
+
+                "python" : {
+                    "prog": "terminus",
+                    "bracketed_paste_mode": true
+                },
+
+                "julia" : {
+                    "prog": "terminal",
+                    "bracketed_paste_mode": true
+                }
+
+                // path related settings
+
+                // path to tmux
+                // "tmux": "tmux",
+
+                // path to screen
+                // "screen": "screen"
+            }
+
+          #+END_SRC
+        - key bindings: add some
+          #+BEGIN_SRC text
+                {
+                    "keys": ["super+enter"], "command": "send_code",
+                    "context": [
+                        { "key": "selector", "operator": "equal", "operand": "source" }
+                    ]
+                },
+                {
+                    "keys": ["super+enter"], "command": "send_code",
+                    "context": [
+                        { "key": "selector", "operator": "equal", "operand": "markup.raw.code-fence.markdown, markup.raw.block.fenced.markdown" }
+                    ]
+                },
+          #+END_SRC
+      - [X] LSP
+        - settings:
+          #+BEGIN_SRC text
+            {
+                    "clients":
+                    {
+                            "rlang":
+                            {
+                                    "enabled": true
+                            }
+                    }
+            }
+
+          #+END_SRC
+        - key bindings:
+      - [X] R-IDE
+        - settings:
+        - key bindings:
+      - [X] check X forwarding
+    - usage:
+      - connect sftp to edit files, can sync when saved (if configured so)
+      - open terminal, ssh into vm by =ssh vm=, e.g. by using ctrl+alt+t configured above
+        - go to desired project directory, run =rwork= (for plain R) or =rdwork= (for radian)
+      - open files to edit, can send text to terminal for evaluation
+      - when done, just exit R and ssh in the terminal
+  - [ ] for vim
+    - idea:
+      - the vim and related plugins can be installed either in the base debian, or installed through guix to the default profile
+      - create a shell alias to call the command and open vim in it
+      - ssh into the vm, then get to desired directory, then call the alias
+      - then inside the shell, can choose to start R or radian
+    - setup:
+      - [ ] install vim (or neovim)
+    - usage:
+  - [X] for emacs
+    - idea:
+      - use tramp, which can ssh into the vm
+      - prepare a command in the vm (an executable shell script) to
+        - find channels.scm and pkgs.scm from the current directory up to root
+        - spawn guix environment
+        - execute R, so that we are using the intended environment
+      - in emacs, change inferior-R-program-name in ESS to call the prepared command
+      - then should be able to use emacs as usual
+    - [X] setup:
+      - [X] customize tramp for convenience, add to .emacs in host:
+        #+BEGIN_SRC emacs-lisp
+          ;; For connecting in tramp mode to vm
+          (use-package tramp
+            :ensure nil
+            :custom
+            (tramp-default-method "sshx")
+            (tramp-default-user "guest")
+            (tramp-default-host "vm"))
+
+          (setq inferior-R-program-name "rwork")
+        #+END_SRC
+      - [X] need to figure out x forwarding
+    - usage:
+      - use tramp to ssh into the desired directory, e.g. =C-x C-f /sshx:vm:guix_demo=, then navigate to project directory if needed
+      - start R with =M-x R=
+
+* What's next?
+  In this part we showed a little demo of using Guix to manage
+  per-project dependencies using the =guix time-machine= and =guix
+  environment= commands, mainly for batch script execution. Next time we
+  attempt to do the same per-project dependency management when you are
+  developing locally (not necessarily in Linux) and connecting to a remote
+  server (or a local VM) with Guix installed.
+
