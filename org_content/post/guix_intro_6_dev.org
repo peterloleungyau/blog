@@ -5,7 +5,7 @@
 
 #+TITLE: Guix Introduction Part 6: R Development with Guix
 
-#+DATE: 2021-05-17
+#+DATE: 2021-06-15
 
 #+HUGO_TAGS: "Guix" "Functional Package Manager" "Reproducibility"
 #+HUGO_CATEGORIES: "Guix"
@@ -20,13 +20,13 @@ projects, much like virtual environments for Python, but with much
 larger scope.
 
 This time we explore the ways to use Guix for per-project dependency
-management, for R development using emacs, neovim, jupyter lab,
-VSCode, Sublime and RStudio. Here we demonstrate with running Guix
-inside qemu VM in MacOS. This setup should work for either local
-development with Linux host running Guix package manager, or when
-connecting to a remote server running Guix package manager. Although
-we focus on R development for data science projects, similar setup
-should also work for Python or other languages.
+management, for R development using emacs, jupyter lab, VSCode,
+Sublime. Here we demonstrate with running Guix inside qemu VM in
+MacOS. This setup should work for either local development with Linux
+host running Guix package manager, or when connecting to a remote
+server running Guix package manager. Although we focus on R
+development for data science projects, similar setup should also work
+for Python or other languages.
 
 # summary
 
@@ -43,28 +43,48 @@ the proper R, then things should work as usual.
 Depending on the way that the development tool connects to R, there
 are 2 ways that this can work:
 
-1. first spawn a shell with needed dependencies, then start the tool
+1. First spawn a shell with needed dependencies, then start the tool
 
-   - some development tools (by default) simply look up the R
+   - Some development tools (by default) simply look up the R
      executable or R kernel from =PATH=, e.g. emacs, (neo)vim, Rstudio
      Desktop version, jupyter lab, so one way is to first spawn the
      shell using =guix time-machine= and =guix environment= (or the
      prepared alias or helper script, as we show below), then start
      the tool inside this shell.
-   - the downside is that you would need to restart your development
+   - The downside is that you would need to restart your development
      tool if the dependencies is changed in the middle of development,
      e.g. while your are writing some code, then realize that you need
-     to use another R package not listed in the manifest file, then you would need to:
+     to use another R package not listed in the manifest file, then
+     you would need to:
+
      + exit the development tool and the spawn shell
      + edit the manifest file =pkgs.scm= to add the R package
      + respawn the shell
      + restart the development tool
 
-2. first start the development tool, then start R throught a wrapper
+2. First start the development tool, then start R throught a wrapper
    script to first spawn the shell with needed dependencies, possibly
-   manually in a terminal
+   manually in a terminal.
 
-   - 
+   - Some tools such as VSCode or Sublime Text has plugins that can start a
+     terminal, and to send code from the editor to the terminal
+     through hotkey. Therefore, we can start a terminal from within
+     the tool, then spawn a shell with needed dependencies within the
+     terminal and start R, and after that we should be able to code as
+     usual, but with the needed dependencies.
+   - In tools such as VSCode and Sublime Text, this is easier than
+     modifying the R executable to be calling a wrapper script that
+     starts R inside a =guix environment=.
+   - However, in emacs, we could just as easily change the R
+     executable to be a wrapper script to start R inside a =guix
+     environment=, and can operate just as usual.
+   - The downside (not applicable to the emacs case) of starting R in
+     the terminal is that there is less integration with the editor in
+     terms of autocompletion. E.g. if you create some variables in the
+     R session, then back in the editor, the newly created variable is
+     not available for completion. For better integration, we may need
+     to use LSP (=languageserver= package in R), but so far I have not
+     figured it out yet.
 
 * Setup Guix
 ** TODO run guix in qemu in macOS
