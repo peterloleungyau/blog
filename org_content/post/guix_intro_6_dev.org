@@ -87,57 +87,87 @@ are 2 ways that this can work:
      figured it out yet.
 
 * Setup Guix
-** TODO run guix in qemu in macOS
-- [X] install debian vm
-  - used debian-10.8.0-amd64-netinst.iso to install on a 50G qcow2 disk
-    #+BEGIN_SRC shell
-    qemu-img create -f qcow2 debian-10.8.0-guix.img 50G
-    #+END_SRC
-  - a minimal install without desktop environment, but with ssh server
-  - install a few things:
-    #+BEGIN_SRC shell
-      apt-get update
-      apt-get install git
-      apt-get sudo
-      # add to sudoer
-      usermod -a -G sudo guest
-      # ssh server
-      apt-get install openssh-server
-      sudo systemctl enable ssh
-    #+END_SRC
-  - guest account with sudo
-    - username: guest
-    - password: guest
-  - config ssh
-    - https://devconnected.com/how-to-install-and-enable-ssh-server-on-debian-10/
-    - add "PermitRootLogin no" to /etc/ssh/sshd_config
-    - forward port 10022 to 22 in qemu
-    - generate ssh key
-      - https://devconnected.com/how-to-set-up-ssh-keys-on-debian-10-buster/
-      - in the vm
-        #+BEGIN_SRC shell
-          # generate ssh key, save to id_vm_rsa
-          ssh-keygen -t rsa -b 4096 -C "guest@debianguix.org"
-        #+END_SRC
-    - add to =~/.ssh/config= in the host for convenience, so that we can ssh into the vm with just =ssh vm=
-      - reference
-        - https://www.xmodulo.com/how-to-speed-up-x11-forwarding-in-ssh.html?format=pdf
-      - add to =~/.ssh/config=
-      #+BEGIN_SRC text
-        Host vm
-          HostName localhost
-          Port 10022
-          AddKeysToAgent yes
-          UseKeychain yes
-          User guest
-          ForwardX11 yes
-          Compression yes
-          # Ciphers blowfish-cbc,arcfour # your ssh client may not support the particular cipher, check with "ssh -Q cipher"
-          ConnectTimeout 20
-          StrictHostKeyChecking no
-          UserKnownHostsFile /dev/null
-          IdentityFile ~/.ssh/id_rsa
-      #+END_SRC
+For completeness, we mentioned the setup of the Guix package manager
+on a foreign distribution, in particular, on Debian in a VM. The same
+should work on Guix system (i.e. the Guix Linux distribution).
+
+** Install Debian VM
+  1. Download Debian 10 from [[https://www.debian.org/]]
+  2. Follow [[./guix_intro_4_try.org][Guix Introduction Part 4: Try Guix]] to use the
+     debian-10.8.0-amd64-netinst.iso to install on a 50G qcow2 disk
+     using qemu, but you can also choose to install Debian using other
+     virtual machine (such as virtualbox), or install on physical
+     machine. E.g. we create an image file =debian-10.8.0-guix.img=,
+     using the qcow2 format with a capacity of 50G by:
+     #+begin_src shell
+     qemu-img create -f qcow2 debian-10.8.0-guix.img 50G
+     #+end_src
+     Then start qemu and proceed with normal Debian installation.
+  3. Here we use the user name =guest= for the VM, you may choose your
+     own user name, but make sure you change the subsequent commands
+     accordingly.
+  4. It suffices to have a minimal install without desktop environment,
+     but with ssh server. You may optionally choose to install a
+     desktop environment.
+  5. Install ssh server and =git=, also add the user to sudoer:
+     #+BEGIN_SRC shell
+       apt-get update
+       apt-get install git
+       apt-get sudo
+       # add to sudoer
+       usermod -a -G sudo guest
+       # ssh server
+       apt-get install openssh-server
+       sudo systemctl enable ssh
+     #+END_SRC
+  6. Config ssh
+     - Reference: https://devconnected.com/how-to-install-and-enable-ssh-server-on-debian-10/
+     - Add =PermitRootLogin no= to =/etc/ssh/sshd_config=
+     - Forward port 10022 (you can choose a different port, and adjust
+       the following accordingly) to 22 in qemu by adding =-net
+       user,hostfwd=tcp::10022-:22= to the qemu invocation command, e.g.
+       #+begin_src shell
+         qemu-system-x86_64 \
+            -nic user,model=virtio-net-pci \
+            -enable-kvm -m 1024 \
+            -net user,hostfwd=tcp::10022-:22 \
+            -device virtio-blk,drive=myhd \
+            -drive if=none,file=./debian-10.8.0-guix.img,id=myhd
+       #+end_src
+     - Generate ssh key to conveniently login to the VM
+       - Reference: https://devconnected.com/how-to-set-up-ssh-keys-on-debian-10-buster/
+       - In the VM
+         #+BEGIN_SRC shell
+           # generate ssh key, save to id_vm_rsa
+           ssh-keygen -t rsa -b 4096 -C "guest@debianguix.org"
+         #+END_SRC
+     - Add to =~/.ssh/config= in the host for convenience, so that we can ssh into the VM with just =ssh vm=
+       - Reference https://www.xmodulo.com/how-to-speed-up-x11-forwarding-in-ssh.html?format=pdf
+       - Add to =~/.ssh/config= (adjust the =Port= to be the same as
+         the forward port in qemu, and the =User= to be your chosen
+         user name):
+       #+BEGIN_SRC text
+         Host vm
+           HostName localhost
+           Port 10022
+           AddKeysToAgent yes
+           UseKeychain yes
+           User guest
+           ForwardX11 yes
+           Compression yes
+           # Ciphers blowfish-cbc,arcfour # your ssh client may not support the particular cipher, check with "ssh -Q cipher"
+           ConnectTimeout 20
+           StrictHostKeyChecking no
+           UserKnownHostsFile /dev/null
+           IdentityFile ~/.ssh/id_rsa
+       #+END_SRC
+  7. This should finish the setup of a Debian 10 VM with ssh, test
+     that you can ssh into the VM without typing password by:
+     #+begin_src shell
+     ssh vm
+     #+end_src
+
+** Install Guix package manager
 - [X] install guix package manager in it
   - binary installation: https://guix.gnu.org/manual/en/guix.html#Binary-Installation
     Run as root:
@@ -170,6 +200,8 @@ are 2 ways that this can work:
       . "$GUIX_PROFILE/etc/profile"
 
     #+END_SRC
+
+* Setup for different tools
 - [-] setup for running R
   - [X] some common thing:
     - [X] prepare a command (call it "work") in the vm (an executable shell script) to
