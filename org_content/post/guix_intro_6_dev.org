@@ -205,40 +205,58 @@ should work on Guix system (i.e. the Guix Linux distribution).
 * Setup for different tools
 ** Common things for convenience
 *** Script to start environment
-     - prepare a command (call it =work=) in the VM as an executable shell script to
-       - find channels.scm and pkgs.scm from the current directory up to root
-       - spawn guix environment
-       - the command also allows extra arguments to be passed, e.g. to execute vim
-       - put at =/usr/local/bin/work=, and make it executable
-         #+BEGIN_SRC shell
-           #!/bin/bash
+A convenient way to start the =guix environment= using =guix time-machine= is useful.
+     - the simplest way:
+       - add an shell alias, assuming we also place the channels file
+         =channels.scm= and manifest file =pkgs.scm= at project root,
+         we may use an alias such as:
+         #+begin_src shell
+           alias work="guix time-machine -C channels.scm -- environment --ad-hoc -m pkgs.scm"
+         #+end_src
+       - this method is simple but assumes the locations of the channels and manifest file.
+     - a more flexible way:
+       - prepare a command (call it =work=) in the VM as an executable shell script to
+         - find =channels.scm= and =pkgs.scm= from the current directory up to root
+         - spawn guix environment
+         - the command also allows extra arguments to be passed, e.g. to execute vim
+         - put at =/usr/local/bin/work= the following file
+           #+BEGIN_SRC shell
+             #!/bin/bash
 
-           # adapted from https://unix.stackexchange.com/a/22215
-           findup () {
-               if [ -e "./$1" ]
-               then
-                   echo "."
-               else
-                   path=$(pwd)
-                   while [[ "$path" != "" && ! -e "$path/$1" ]]; do
-                       path=${path%/*}
-                   done
-                   echo "$path"
-               fi
-           }
+             # adapted from https://unix.stackexchange.com/a/22215
+             findup () {
+                 if [ -e "./$1" ]
+                 then
+                     echo "."
+                 else
+                     path=$(pwd)
+                     while [[ "$path" != "" && ! -e "$path/$1" ]]; do
+                         path=${path%/*}
+                     done
+                     echo "$path"
+                 fi
+             }
 
-           cfpath=$(findup channels.scm)
-           pfpath=$(findup pkgs.scm)
+             cfpath=$(findup channels.scm)
+             pfpath=$(findup pkgs.scm)
 
-           # https://unix.stackexchange.com/a/415028
-           channel_file=${cfpath:+${cfpath}/}channels.scm
-           pkgs_file=${pfpath:+${pfpath}/}pkgs.scm
+             # https://unix.stackexchange.com/a/415028
+             channel_file=${cfpath:+${cfpath}/}channels.scm
+             pkgs_file=${pfpath:+${pfpath}/}pkgs.scm
 
-           exec guix time-machine -C "${channel_file}" -- environment --ad-hoc -m "${pkgs_file}" "$@"
+             exec guix time-machine -C "${channel_file}" -- environment --ad-hoc -m "${pkgs_file}" "$@"
 
-         #+END_SRC
+           #+END_SRC
+         - make it executable:
+           #+begin_src shell
+             chmod +x /usr/local/bin/work
+           #+end_src
+       - advantage: can easily allow different manifest files or
+         channels files at different subdirectores, should that be
+         needed.
 *** Script to start R (optional)
-     - prepare a command (call it "rwork") in the vm to call R in the spawn environment
+     - optionally prepare a command (call it =rwork=) in the VM to call R in the spawn environment
+       - useful for starting R in =ESS= within =emacs=
        - put at =/usr/local/bin/rwork=, and make it executable
          #+BEGIN_SRC shell
            #!/bin/bash
@@ -247,16 +265,19 @@ should work on Guix system (i.e. the Guix Linux distribution).
            exec work r-dt -- R --no-save "$@"
 
          #+END_SRC
-     - prepare radian to vm
-       - https://github.com/shrektan/radian
-       - can import radian from pypi, then install, but encounter glibc version mismatch when in different guix environment
-       - so also install radian in guix, but seems still may have glibc version mismatch unless we build the radian together with the environment
-       - also, radian is not currently in the official guix repository, so we import with =guix import pypi -r radian= to get a skeleton, but need some fiddling to get it to build:
-         - need to add importing of gnu modules at the top
-         - need to disable the tests in the few packages including radian, rchitect, lineedit to build without error
-         - need to fix some inputs, especially python-pytest-runner
-         - need to use newer version of python-pyte (at least 0.8.0), so included a modified definition of python-pyte
-         - the resulting file: to be put in the vm as =~/extra/radian.scm=
+*** Script to start radian (optional)
+Some may prefer [[https://github.com/randy3k/radian][radian]] to plain R console, especially when explicitly starting R in terminal, e.g. for use in Sublime Text and VSCode.
+     - prepare radian in VM
+       - tried but encounter problems in Debian 10 VM:
+         - tried installing =radian= from pypi, then install, but encounter glibc version mismatch when in different guix environment
+         - so also tried installing radian in guix, but seems still may have glibc version mismatch unless we build the radian together with the environment
+       - the tried method that works: add =radian= to Guix and add it to the package list in the =guix environment=:
+         - =radian= is not currently (at the time of writing) in the official guix repository, so we import with =guix import pypi -r radian= to get a skeleton, but need some fiddling to get it to build:
+           - need to add importing of gnu modules at the top
+           - need to disable the tests in the few packages including =radian=, =rchitect=, =lineedit= to build without error
+           - need to fix some inputs, especially =python-pytest-runner=
+           - need to use newer version of =python-pyte= (at least 0.8.0), so included a modified definition of =python-pyte=
+         - the resulting file: to be put in the VM as =~/extra/radian.scm=
            #+BEGIN_SRC scheme
              (use-modules (guix)
                           (guix licenses)
@@ -399,9 +420,9 @@ should work on Guix system (i.e. the Guix Linux distribution).
              python-radian
 
            #+END_SRC
-         - this file can be added to =guix environment= call with the =-l= option, so that radian is built together with other packages for the project
-     - prepare a executable shell script (call it "rdwork") in the vm to call radian in the spawn environment
-       - put at =/usr/local/bin/rdwork=, and make it executable
+           - this file can be added to =guix environment= call with the =-l= option, so that radian is built together with other packages for the project
+     - prepare an executable shell script (call it =rdwork=) in the VM to call =radian= in the spawn environment
+       - put at =/usr/local/bin/rdwork= the following file, and make it executable:
          #+BEGIN_SRC shell
            #!/bin/bash
 
@@ -409,29 +430,36 @@ should work on Guix system (i.e. the Guix Linux distribution).
            exec work r-dt -l ~/extra/radian.scm -- radian "$@"
 
          #+END_SRC
-     - for X forwarding
-       - [X] install XQuartz on Mac
-         - https://www.xquartz.org/
-       - [X] add =xhost + 127.0.0.1= to the qemu starting script, before starting the vm
-       - [X] use X forwarding in ssh
+*** X forwarding settings (optional)
+X forwarding may come into handy for viewing plots, or viewing data frames through R =DT=.
+       - on Mac host, install XQuartz
+         - refer to https://www.xquartz.org/
+       - add =xhost + 127.0.0.1= to the qemu starting script, before starting the VM
+       - use X forwarding in ssh
          - either use =ssh +XC vm= to connect, or
          - add =ForwardX11 yes= to =~/.ssh/config= as shown above
-         - for R DT to work inside VM, install a browser
+       - (optional) for R =DT= to work inside VM, do these *inside the VM*
+         - install a web browser:
            - e.g. Firefox
              #+BEGIN_SRC shell
              sudo apt-get install firefox-esr
              #+END_SRC
-           - or use a more light-weight one such as [[https://astian.org/en/midori-browser/][midori]], which can and should be installed through guix (to avoid dynamic library problem in different guix environment):
+           - or you may choose a more light-weight browser such as
+             [[https://astian.org/en/midori-browser/][midori]], which can and should be installed through guix (to
+             avoid dynamic library problem in different guix
+             environment):
              #+BEGIN_SRC shell
              guix package -i midori
              #+END_SRC
-         - and DT needs the "browser" option to point to a browser, e.g. firefox. You may add the following to =~/.Rprofile=, create the file =~/.Rprofile= if it does not exist:
+         - DT needs the "browser" option to point to a browser,
+           e.g. firefox. You may add the following to =~/.Rprofile=,
+           create the file =~/.Rprofile= if it does not exist:
            #+BEGIN_SRC R
-             # for DT::datatable to work, you may use other browser you like, if it is installed on the system
+             # for DT::datatable to work, you may use other browser you like, if it is installed in the system
              options(browser = "midori") # alternative
              # options(browser = "firefox") # alternative
 
-             # can consider overriding View as DT::datatable for convenience, as the default View is not very good in X forwarding
+             # (optional) can consider overriding View as DT::datatable for convenience, as the default View is not very good in X forwarding
              if(requireNamespace("DT", quietly = T)) {View <- DT::datatable}
            #+END_SRC
 ** Jupyter lab
