@@ -203,11 +203,9 @@ should work on Guix system (i.e. the Guix Linux distribution).
        #+END_SRC
 
 * Setup for different tools
-
 ** Common things for convenience
- - [-] setup for running R
-   - [X] some common thing:
-     - [X] prepare a command (call it "work") in the vm (an executable shell script) to
+*** Script to start environment
+     - prepare a command (call it =work=) in the VM as an executable shell script to
        - find channels.scm and pkgs.scm from the current directory up to root
        - spawn guix environment
        - the command also allows extra arguments to be passed, e.g. to execute vim
@@ -239,7 +237,8 @@ should work on Guix system (i.e. the Guix Linux distribution).
            exec guix time-machine -C "${channel_file}" -- environment --ad-hoc -m "${pkgs_file}" "$@"
 
          #+END_SRC
-     - [X] prepare a command (call it "rwork") in the vm to call R in the spawn environment
+*** Script to start R (optional)
+     - prepare a command (call it "rwork") in the vm to call R in the spawn environment
        - put at =/usr/local/bin/rwork=, and make it executable
          #+BEGIN_SRC shell
            #!/bin/bash
@@ -248,7 +247,7 @@ should work on Guix system (i.e. the Guix Linux distribution).
            exec work r-dt -- R --no-save "$@"
 
          #+END_SRC
-     - [X] prepare radian to vm
+     - prepare radian to vm
        - https://github.com/shrektan/radian
        - can import radian from pypi, then install, but encounter glibc version mismatch when in different guix environment
        - so also install radian in guix, but seems still may have glibc version mismatch unless we build the radian together with the environment
@@ -401,7 +400,7 @@ should work on Guix system (i.e. the Guix Linux distribution).
 
            #+END_SRC
          - this file can be added to =guix environment= call with the =-l= option, so that radian is built together with other packages for the project
-     - [X] prepare a executable shell script (call it "rdwork") in the vm to call radian in the spawn environment
+     - prepare a executable shell script (call it "rdwork") in the vm to call radian in the spawn environment
        - put at =/usr/local/bin/rdwork=, and make it executable
          #+BEGIN_SRC shell
            #!/bin/bash
@@ -410,7 +409,7 @@ should work on Guix system (i.e. the Guix Linux distribution).
            exec work r-dt -l ~/extra/radian.scm -- radian "$@"
 
          #+END_SRC
-     - [X] for X forwarding
+     - for X forwarding
        - [X] install XQuartz on Mac
          - https://www.xquartz.org/
        - [X] add =xhost + 127.0.0.1= to the qemu starting script, before starting the vm
@@ -435,28 +434,7 @@ should work on Guix system (i.e. the Guix Linux distribution).
              # can consider overriding View as DT::datatable for convenience, as the default View is not very good in X forwarding
              if(requireNamespace("DT", quietly = T)) {View <- DT::datatable}
            #+END_SRC
-   - [ ] for rstudio
-     - idea:
-       - use the same idea as in https://github.com/grst/rstudio-server-conda
-       - the idea is to start rstudio server in non-daemon mode, and does not start it as a service
-       - then we can use guix environment to start a new shell with needed dependency, then start rstudio server
-       - then can connect in the browser, if we setup port forwarding properly
-     - setup:
-       - install rstudio server in the VM, which is currently a Debian 10
-         - follow https://rstudio.com/products/rstudio/download-server/debian-ubuntu/ for your Linux
-         - for the current vm, I therefore use:
-           #+BEGIN_SRC shell
-             sudo apt-get install gdebi-core
-             wget https://download2.rstudio.org/server/bionic/amd64/rstudio-server-1.4.1106-amd64.deb
-             sudo gdebi rstudio-server-1.4.1106-amd64.deb
-           #+END_SRC
-       - disable and stop rstudio server service in the VM
-         #+BEGIN_SRC shell
-           sudo systemctl disable rstudio-server.service
-           sudo systemctl stop rstudio-server.service
-         #+END_SRC
-     - usage:
-   - [X] jupyter lab
+** Jupyter lab
      - idea:
        - to install jupyter lab in the VM, to use with R kernel
        - then use "work" to get the guix environment we want, to start jupyter
@@ -499,7 +477,7 @@ should work on Guix system (i.e. the Guix Linux distribution).
          - at the browser, press quit and logout
          - close connection of the ssh for port forwarding
          - close the original connection and exit if appropriate
-   - [-] for vscode
+** VSCode
      - idea:
        - can use Remote-SSH plugin
          - which essentially will install a VSCode in the vm
@@ -642,7 +620,7 @@ should work on Guix system (i.e. the Guix Linux distribution).
        - when done, close connection
          - click the green icon in the bottom left corner
          - choose "Close Connection"
-   - [X] for sublime text
+** Sublime Text
      - idea:
        - use sftp extension for editing files in the vm
        - open terminal into the vm
@@ -808,16 +786,7 @@ should work on Guix system (i.e. the Guix Linux distribution).
          - go to desired project directory, run =rwork= (for plain R) or =rdwork= (for radian)
        - open files to edit, can send text to terminal for evaluation
        - when done, just exit R and ssh in the terminal
-   - [ ] for vim
-     - idea:
-       - the vim and related plugins can be installed either in the base debian, or installed through guix to the default profile
-       - create a shell alias to call the command and open vim in it
-       - ssh into the vm, then get to desired directory, then call the alias
-       - then inside the shell, can choose to start R or radian
-     - setup:
-       - [ ] install vim (or neovim)
-     - usage:
-   - [X] for emacs
+** Emacs
      - idea:
        - use tramp, which can ssh into the vm
        - prepare a command in the vm (an executable shell script) to
@@ -843,6 +812,39 @@ should work on Guix system (i.e. the Guix Linux distribution).
      - usage:
        - use tramp to ssh into the desired directory, e.g. =C-x C-f /sshx:vm:guix_demo=, then navigate to project directory if needed
        - start R with =M-x R=
+
+* Un-explored tools
+   - [ ] for rstudio
+     - idea:
+       - use the same idea as in https://github.com/grst/rstudio-server-conda
+       - the idea is to start rstudio server in non-daemon mode, and does not start it as a service
+       - then we can use guix environment to start a new shell with needed dependency, then start rstudio server
+       - then can connect in the browser, if we setup port forwarding properly
+     - setup:
+       - install rstudio server in the VM, which is currently a Debian 10
+         - follow https://rstudio.com/products/rstudio/download-server/debian-ubuntu/ for your Linux
+         - for the current vm, I therefore use:
+           #+BEGIN_SRC shell
+             sudo apt-get install gdebi-core
+             wget https://download2.rstudio.org/server/bionic/amd64/rstudio-server-1.4.1106-amd64.deb
+             sudo gdebi rstudio-server-1.4.1106-amd64.deb
+           #+END_SRC
+       - disable and stop rstudio server service in the VM
+         #+BEGIN_SRC shell
+           sudo systemctl disable rstudio-server.service
+           sudo systemctl stop rstudio-server.service
+         #+END_SRC
+     - usage:
+
+   - [ ] for vim
+     - idea:
+       - the vim and related plugins can be installed either in the base debian, or installed through guix to the default profile
+       - create a shell alias to call the command and open vim in it
+       - ssh into the vm, then get to desired directory, then call the alias
+       - then inside the shell, can choose to start R or radian
+     - setup:
+       - [ ] install vim (or neovim)
+     - usage:
 
 * What's next?
   In this part we showed a little demo of using Guix to manage
