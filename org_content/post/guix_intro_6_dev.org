@@ -463,24 +463,32 @@ X forwarding may come into handy for viewing plots, or viewing data frames throu
              if(requireNamespace("DT", quietly = T)) {View <- DT::datatable}
            #+END_SRC
 ** Jupyter lab
-     - idea:
+*** Idea
        - to install jupyter lab in the VM, to use with R kernel
-       - then use "work" to get the guix environment we want, to start jupyter
-       - then connect from browser with port forwarding, then we have nice graphics, just as with any jupyter notebook
-     - [X] setup:
-       - one way is to ust guix-jupyter
-         - https://hpc.guix.info/blog/2019/10/towards-reproducible-jupyter-notebooks/
-         - it allows specifying guix environment within the notebook iteself
+       - then use =work= to get the guix environment we want, to start
+         jupyter
+       - then connect from browser with port forwarding, then we have
+         nice graphics, just as with any jupyter notebook
+*** Setup
+       - side note: one way is to use guix-jupyter
+         - reference: https://hpc.guix.info/blog/2019/10/towards-reproducible-jupyter-notebooks/
+         - it allows specifying guix environment within the notebook
+           itself
          - so can pin the versions of the needed packages
-         - but this will then be different from using other approaches here
-         - so this method is for reference, and let for the reader to explore
-       - [X] for consistency, the jupyter and R kernels should be installed in the same guix environment along with other project packages
+         - but this will then be different from using other approaches
+           here
+         - so this method is for reference, and left for the reader to
+           explore
+       - for consistency, the jupyter and R kernels should be
+         installed in the same guix environment along with other
+         project packages
          - basically we need
-           - jupyter
-           - r-irkernel for the R kernel
-           - r-irdisplay for rich display capabilities
-           - Optional, python-ipykernel for python kernel
-         - so prepare an executable shell script at =/usr/local/bin/jrwork=
+           - =jupyter=
+           - =r-irkernel= for the R kernel
+           - =r-irdisplay= for rich display capabilities
+           - Optionally, =python-ipykernel= for python kernel
+         - so prepare an executable shell script at
+           =/usr/local/bin/jrwork= with the following:
            #+BEGIN_SRC shell
              #!/bin/bash
 
@@ -488,37 +496,63 @@ X forwarding may come into handy for viewing plots, or viewing data frames throu
              exec work jupyter r-irkernel r-irdisplay -- jupyter notebook "$@"
 
            #+END_SRC
-     - usage:
-       - ssh into the VM
-       - go to the project directory
-       - start jupyter with dependencies using =jrwork=
-       - once jupyter is started, note the port number of the url, e.g. if the link is "http://localhost:8890/?token=d4bfa08127d33e9e09820ef3fc3c135ac6086f78e459fe2e", the port *inside VM* is 8890
-       - do ssh port forwarding
-         - reference: https://www.ssh.com/ssh/tunneling/example
-         - the easiest way is to map the same port number in your local machine to the port number inside VM, but you may choose a different port number (don't be too small, or it may be restricted by your OS)
-         - in another terminal in you local machine, ssh with port forwarding
-         - the general syntax of ssh port forwarding into the VM is =ssh -L xxx:localhost:yyy=, where =xxx= is the local port number you like, and =yyy= is the port number inside the VM
-       - browser the url for jupyter
-         - in your local browser, paste the link printed by jupyter in the VM, but remember to change the port number to be your chosen local port number
-       - then start using jupyter
-       - when done
-         - at the browser, press quit and logout
-         - close connection of the ssh for port forwarding
-         - close the original connection and exit if appropriate
+*** Usage
+       1. ssh into the VM, e.g. with the above convenient setup
+          #+begin_src shell
+            ssh vm
+          #+end_src
+       2. go to the project directory
+       3. start jupyter with dependencies using =jrwork=
+       4. once jupyter is started, note the port number of the url,
+          e.g. if the link is
+          "http://localhost:8890/?token=d4bfa08127d33e9e09820ef3fc3c135ac6086f78e459fe2e",
+          the port *inside VM* is 8890
+       5. do ssh port forwarding
+          - reference: https://www.ssh.com/ssh/tunneling/example
+          - the easiest way is to map the same port number in your
+            local machine to the port number inside VM, but you may
+            choose a different port number (don't choose a too small
+            number, or it may be restricted by your OS)
+          - in another terminal in you local machine, ssh with port
+            forwarding
+          - the general syntax of ssh port forwarding into the VM is
+            =ssh -L xxx:localhost:yyy=, where =xxx= is the local port
+            number you like, and =yyy= is the port number inside the
+            VM, so for the above example of port 8890 and map to the
+            same port, we would use
+            #+begin_src shell
+              ssh -L 8890:localhost:8890
+            #+end_src
+       6. browse the url for jupyter
+          - in your local browser, paste the link printed by jupyter
+            in the VM, but remember to change the port number to be
+            your chosen local port number (if you choose a different
+            port number)
+       7. then start using jupyter
+       8. when done
+          - in the browser, press quit and logout
+          - close connection of the ssh for port forwarding
+          - close the original connection and exit if appropriate
 ** VSCode
-     - idea:
+*** Idea
        - can use Remote-SSH plugin
          - which essentially will install a VSCode in the vm
          - then allows us to use VSCode as if it is local
        - then configure the remote one for R programming
-         - change the R executable name to be "rwork" to use the proper dependencies using guix
-     - [-] setup:
-       - [X] prepare for R languageserver needed for VSCode's R LSP Client extension
-         - at the time of writing, R languageserver is not in guix's official repository, so we import it from CRAN
+         - change the R executable name to be =rwork= to use the
+           proper dependencies using guix
+*** Setup
+       - prepare for R =languageserver= needed for VSCode's R LSP Client extension
+         - at the time of writing, R =languageserver= is not in guix's
+           official repository, so we import it from CRAN
            #+BEGIN_SRC shell
              guix import cran -r languageserver > r_languageserver.scm
            #+END_SRC
-         - then need to add something at the top to use modules needed, and at the bottom to return the =r-languageserver= package, to get a file that can be used in =guix environment= to get languageserver, together with other project packages
+         - then need to add something at the top to use modules
+           needed, and at the bottom to return the =r-languageserver=
+           package, to get a file that can be used in =guix
+           environment= to get =languageserver=, together with other
+           project packages
            - the modified file is put in the VM at =~/extra/r_languagerserver.scm=:
              #+BEGIN_SRC scheme
                (use-modules (guix)
@@ -589,82 +623,103 @@ X forwarding may come into handy for viewing plots, or viewing data frames throu
                r-languageserver
 
              #+END_SRC
-         - [X] create an executable shell script at =/usr/local/bin/rcwork=, to add loading of languageserver with R:
+         - create an executable shell script at =/usr/local/bin/rcwork=, to add loading of =languageserver= with R:
            #+BEGIN_SRC shell
            #!/bin/bash
 
            exec work r-dt -l ~/extra/r_languageserver.scm -- R --no-save "$@"
 
            #+END_SRC
-         - [X] create an executable shell script at =/usr/local/bin/rcdwork=, to add loading languageserver and radian:
+         - (Optional) create an executable shell script at =/usr/local/bin/rcdwork=, to add loading =languageserver= and =radian=:
            #+BEGIN_SRC shell
            #!/bin/bash
 
            exec work r-dt -l ~/extra/r_languageserver.scm -l ~/extra/radian.scm -- radian "$@"
 
            #+END_SRC
-         - you are advised to run =rcwork= and =rcdwork= at least once in the project directory before proceeding, because building or downloading the packages needed for languageserver can take a while
-       - [X] install VSCode
-         - https://code.visualstudio.com/Download
-       - [X] install Remote-SSH extension
+         - you are advised to run =rcwork= and =rcdwork= at least once
+           in the project directory before proceeding, because
+           building or downloading the packages needed for
+           =languageserver= can take a while
+       - install VSCode
+         - reference: https://code.visualstudio.com/Download
+       - install Remote-SSH extension in VSCode
          - search "Remote-SSH" in the extension icon in the left bar
-         - then click install
-         - then click the green "Open a Remote Window" icon at the bottom left corner to switch to the remote instance
+         - then click "install"
+         - then click the green "Open a Remote Window" icon at the
+           bottom left corner to switch to the remote instance
            - select "Connect to Host" or "Connect Current Window to Host"
-           - then select "vm" if you have already configured =.ssh/config= as above; otherwise you may configure it here
-           - if the bottom left gren icon shows something like "SSH: vm", then you have successfully connected to the remote instance
-       - [X] setup the remote VSCode environment for R
-         - https://www.r-bloggers.com/2021/01/setup-visual-studio-code-to-run-r-on-vscode-2021/
-         - [X] install [[https://marketplace.visualstudio.com/items?itemName=Ikuyadeu.r][VSCode R]] extension
-         - [X] install [[https://marketplace.visualstudio.com/items?itemName=REditorSupport.r-lsp][R LSP Client]] extension
-         - [X] install languageserver in R (needed for R LSP Client)
+           - then select "vm" if you have already configured
+             =.ssh/config= as above; otherwise you may configure it
+             here
+           - if the bottom left green icon shows something like "SSH:
+             vm", then you have successfully connected to the remote
+             instance
+       - setup the remote VSCode environment for R
+         - reference: https://www.r-bloggers.com/2021/01/setup-visual-studio-code-to-run-r-on-vscode-2021/
+         - install [[https://marketplace.visualstudio.com/items?itemName=Ikuyadeu.r][VSCode R]] extension
+         - install [[https://marketplace.visualstudio.com/items?itemName=REditorSupport.r-lsp][R LSP Client]] extension
+         - install =languageserver= in R (needed for R LSP Client)
            - should have been setup above
-         - [X] install radian
+         - install =radian=
            - should have been setup above
-         - [X] enable =r.bracketedPaste= for using Radian
-           - goto settings: menu "Code" -> "Preferences" -> "Settings", or use the shortcut
-           - search r.bracketedPaste, and make sure it is enabled (ticked)
-         - [X] enable =r.alwaysUseActiveTerminal= if we were to manually start R in the terminal
+         - enable =r.bracketedPaste= for using Radian
+           - goto settings: menu "Code" -> "Preferences" ->
+             "Settings", or use the shortcut
+           - search =r.bracketedPaste=, and make sure it is enabled
+             (ticked)
+         - enable =r.alwaysUseActiveTerminal= if we were to manually
+           start R in the terminal
            - goto settings
-           - search "r.alwaysUseActiveTerminal", tick the box to set it to True
-         - [X] Set up =r.rpath.windows=, =r.rpath.mac=, =r.rpath.linux=: Path to Radian
+           - search =r.alwaysUseActiveTerminal=, tick the box to set
+             it to =True=
+         - Set up =r.rpath.windows=, =r.rpath.mac=, =r.rpath.linux=: Path to Radian
            - go to settings
-           - search "r.rpath.linux", change it to =/usr/local/bin/rcwork=, the path to our R execution script
-       - [ ] check for better integration with R
-         - in particular, whether the LSP can provide completions of created objects
-     - usage:
-       - connect to VM
-         - then click the green "Open a Remote Window" icon at the bottom left corner to switch to the remote instance
-         - select "Connect to Host" or "Connect Current Window to Host"
-         - then select "vm"
-       - open folder of the project
-         - click "Open Folder" in Explorer
-         - find the project folder and click "Ok"
-       - open R in terminal
-         - if terminal is not ok yet, open one with menu "Terminal" -> "New Terminal"
-         - in the terminal (which should already be in the project directory), type =rcwork= (for plain R) or =rcdwork= (for radian)
-         - then wait untile R prompt appears
-       - then can open any R file that you want to edit, and send code (default key Command+Enter in Mac) to the terminal as needed
-       - when done, close connection
-         - click the green icon in the bottom left corner
-         - choose "Close Connection"
-** Sublime Text
-     - idea:
+           - search =r.rpath.linux=, change it to
+             =/usr/local/bin/rcwork=, the path to our R execution
+             script
+*** Usage
+       1. connect to VM
+          - then click the green "Open a Remote Window" icon at the
+            bottom left corner to switch to the remote instance
+          - select "Connect to Host" or "Connect Current Window to
+            Host"
+          - then select "vm"
+       2. open folder of the project
+          - click "Open Folder" in Explorer
+          - find the project folder and click "Ok"
+       3. open R in terminal
+          - if terminal is not ok yet, open one with menu "Terminal"
+            -> "New Terminal"
+          - in the terminal (which should already be in the project
+            directory), type =rcwork= (for plain R) or =rcdwork= (for
+            =radian=)
+          - then wait untile R prompt appears
+       4. then can open any R file that you want to edit, and send
+          code (default key Command+Enter in Mac) to the terminal as
+          needed
+       5. when done, close connection
+          - click the green icon in the bottom left corner
+          - choose "Close Connection"
+** Sublime Text 3
+*** Idea
        - use sftp extension for editing files in the vm
        - open terminal into the vm
-       - create a shell alias to call the command and open R or radian
-       - in the ssh session, get to desired directory, then call the alias
-       - use SendText extension to send part of source file to the terminal (where R is started) to evaluate
-     - [X] setup:
-       - [X] install sublime text 3
-       - [X] install sftp plugin
-         - https://morannachum.wordpress.com/2015/04/05/how-to-configure-a-sftp-folder-in-sublime/
-         - https://notepadhelper.com/sublime-text/ftp-connection-sftp-plugin/
+       - in the ssh session, get to desired directory
+       - call the command and open R or radian in guix environment
+       - use SendText extension to send part of source file to the
+         terminal (where R is started) to evaluate
+*** Setup
+       - install [[https://www.sublimetext.com/3][Sublime Text 3]]
+       - install sftp plugin
+         - references:
+           - https://morannachum.wordpress.com/2015/04/05/how-to-configure-a-sftp-folder-in-sublime/
+           - https://notepadhelper.com/sublime-text/ftp-connection-sftp-plugin/
          - first install "Package Control" under "Tools"
          - then under "Sublime Text" -> "Preferences" -> "Package Control", choose "Install package"
          - then type "SFTP", then it will install
-         - [X] setup ssh into the server
-           - https://codexns.io/products/sftp_for_sublime/usage
+         - setup ssh into the server
+           - reference: https://codexns.io/products/sftp_for_sublime/usage
            - under "Sublime Text" -> "Preferences" -> "Package Settings" -> "SFTP" -> "Settings"
            - under "File" -> "SFTP/FTP" -> "Setup Server"
              - change the "host", "user", "port", "remote_path", "ssh_key_file" to match the ssh settings
@@ -711,12 +766,12 @@ X forwarding may come into handy for viewing plots, or viewing data frames throu
                - right click on the folder in side bar, select map to remote
                - then edit the config, similar to the above
                - now can sync files between local and vm
-       - [X] install Terminus in Sublime Text
+       - install Terminus in Sublime Text
          - settings:
            - "256color" : true
            - "unix_term" : "xterm-256color"
          - key bindings:
-           - take only two, can customize as you like
+           - take only two here for illustration, can customize as you like
              #+BEGIN_SRC text
                [
                    // Toggle the default shell in panel
@@ -730,7 +785,7 @@ X forwarding may come into handy for viewing plots, or viewing data frames throu
                    }
                ]
              #+END_SRC
-       - [X] install SendCode
+       - install SendCode in Sublime Text
          - settings: can customize as you like
            #+BEGIN_SRC text
              {
@@ -789,7 +844,7 @@ X forwarding may come into handy for viewing plots, or viewing data frames throu
                      ]
                  },
            #+END_SRC
-       - [X] LSP
+       - install LSP in Sublime Text
          - settings:
            #+BEGIN_SRC text
              {
@@ -803,28 +858,24 @@ X forwarding may come into handy for viewing plots, or viewing data frames throu
              }
 
            #+END_SRC
-         - key bindings:
-       - [X] R-IDE
-         - settings:
-         - key bindings:
-       - [X] check X forwarding
-     - usage:
-       - connect sftp to edit files, can sync when saved (if configured so)
-       - open terminal, ssh into vm by =ssh vm=, e.g. by using ctrl+alt+t configured above
-         - go to desired project directory, run =rwork= (for plain R) or =rdwork= (for radian)
-       - open files to edit, can send text to terminal for evaluation
-       - when done, just exit R and ssh in the terminal
+       - install R-IDE in Sublime Text
+*** Usage
+       1. connect sftp to edit files, can sync when saved (if configured so)
+       2. open terminal, ssh into vm by =ssh vm=, e.g. by using ctrl+alt+t configured above
+       3. go to desired project directory, run =rwork= (for plain R) or =rdwork= (for radian)
+       4. open files to edit, can send text to terminal for evaluation
+       5. when done, just exit R and ssh in the terminal
 ** Emacs
-     - idea:
+*** Idea
        - use tramp, which can ssh into the vm
        - prepare a command in the vm (an executable shell script) to
          - find channels.scm and pkgs.scm from the current directory up to root
          - spawn guix environment
          - execute R, so that we are using the intended environment
-       - in emacs, change inferior-R-program-name in ESS to call the prepared command
-       - then should be able to use emacs as usual
-     - [X] setup:
-       - [X] customize tramp for convenience, add to .emacs in host:
+       - in emacs, change =inferior-R-program-name= in ESS to call the prepared command
+       - then should be able to use R in emacs as usual
+*** Setup
+       - customize tramp for convenience, add to =.emacs= in host:
          #+BEGIN_SRC emacs-lisp
            ;; For connecting in tramp mode to vm
            (use-package tramp
@@ -836,10 +887,14 @@ X forwarding may come into handy for viewing plots, or viewing data frames throu
 
            (setq inferior-R-program-name "rwork")
          #+END_SRC
-       - [X] need to figure out x forwarding
-     - usage:
-       - use tramp to ssh into the desired directory, e.g. =C-x C-f /sshx:vm:guix_demo=, then navigate to project directory if needed
-       - start R with =M-x R=
+*** Usage
+       1. use tramp to ssh into the desired directory, e.g. =C-x C-f /sshx:vm:guix_demo=
+       2. then navigate to project directory if needed
+       3. start R with =M-x R=
+       4. use R in emacs through ESS as usual
+          - =C-c C-c= to evaluate block of code
+          - =C-c C-r= to evaluate selected region of code
+       5. when done, just quit R as usual, e.g. using =q()= in the R prompt
 
 * Un-explored tools
    - [ ] for rstudio
