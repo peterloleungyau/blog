@@ -497,17 +497,22 @@ X forwarding may come into handy for viewing plots, or viewing data frames throu
 
            #+END_SRC
 *** Usage
-       1. ssh into the VM, e.g. with the above convenient setup
+       1. start the VM
+       2. ssh into the VM, e.g. with the above convenient setup
           #+begin_src shell
             ssh vm
           #+end_src
-       2. go to the project directory
-       3. start jupyter with dependencies using =jrwork=
-       4. once jupyter is started, note the port number of the url,
+       3. go to the project directory
+       4. start jupyter with dependencies using =jrwork=
+
+          #+CAPTION: Start Jupyter in Guix environment
+          [[file:guix_intro_6_jupyter_1_jrwork.png]]
+
+       5. once jupyter is started, note the port number of the url,
           e.g. if the link is
           "http://localhost:8890/?token=d4bfa08127d33e9e09820ef3fc3c135ac6086f78e459fe2e",
           the port *inside VM* is 8890
-       5. do ssh port forwarding
+       6. do ssh port forwarding
           - reference: https://www.ssh.com/ssh/tunneling/example
           - the easiest way is to map the same port number in your
             local machine to the port number inside VM, but you may
@@ -516,20 +521,34 @@ X forwarding may come into handy for viewing plots, or viewing data frames throu
           - in another terminal in you local machine, ssh with port
             forwarding
           - the general syntax of ssh port forwarding into the VM is
-            =ssh -L xxx:localhost:yyy=, where =xxx= is the local port
-            number you like, and =yyy= is the port number inside the
-            VM, so for the above example of port 8890 and map to the
-            same port, we would use
+            =ssh -L xxx:localhost:yyy vm=, where =xxx= is the local
+            port number you like, and =yyy= is the port number inside
+            the VM, so for the above example of port 8890 and map to
+            the same port, we would type /in a new terminal/
             #+begin_src shell
-              ssh -L 8890:localhost:8890
+              ssh -L 8890:localhost:8890 vm
             #+end_src
-       6. browse the url for jupyter
+
+            #+CAPTION: Port fowarding in ssh
+            [[file:guix_intro_6_jupyter_2_port_forwarding.png]]
+
+       7. browse the url for jupyter
           - in your local browser, paste the link printed by jupyter
             in the VM, but remember to change the port number to be
             your chosen local port number (if you choose a different
             port number)
-       7. then start using jupyter
-       8. when done
+
+            #+CAPTION: Browse URL of Jupyter
+            [[file:guix_intro_6_jupyter_3_browser_connect.png]]
+
+       8. then start using jupyter
+          #+CAPTION: Open Jupyter
+          [[file:guix_intro_6_jupyter_4_open_jupyter.png]]
+
+          #+CAPTION: Open notebook and work
+          [[file:guix_intro_6_jupyter_5_open_notebook.png]]
+
+       9. when done
           - in the browser, press quit and logout
           - close connection of the ssh for port forwarding
           - close the original connection and exit if appropriate
@@ -645,20 +664,41 @@ X forwarding may come into handy for viewing plots, or viewing data frames throu
          - reference: https://code.visualstudio.com/Download
        - install Remote-SSH extension in VSCode
          - search "Remote-SSH" in the extension icon in the left bar
+
+           #+CAPTION: Install extension in VSCode
+           [[file:guix_intro_6_vscode_1_extensions.png]]
+
          - then click "install"
+
+           #+CAPTION: Install Remote-SSH extension
+           [[file:guix_intro_6_vscode_2_extension_remote_ssh.png]]
+
          - then click the green "Open a Remote Window" icon at the
            bottom left corner to switch to the remote instance
            - select "Connect to Host" or "Connect Current Window to Host"
+
+             #+CAPTION: Connect to remote through SSH inside VSCode
+             [[file:guix_intro_6_vscode_3_connect.png]]
+
            - then select "vm" if you have already configured
              =.ssh/config= as above; otherwise you may configure it
              here
+             
+             #+CAPTION: Connect to VM
+             [[file:guix_intro_6_vscode_4_connect.png]]
+
            - if the bottom left green icon shows something like "SSH:
              vm", then you have successfully connected to the remote
              instance
+
        - setup the remote VSCode environment for R
          - reference: https://www.r-bloggers.com/2021/01/setup-visual-studio-code-to-run-r-on-vscode-2021/
          - install [[https://marketplace.visualstudio.com/items?itemName=Ikuyadeu.r][VSCode R]] extension
+           #+CAPTION: Install VSCode R extension
+           [[file:guix_intro_6_vscode_10_extension_r.png]]
          - install [[https://marketplace.visualstudio.com/items?itemName=REditorSupport.r-lsp][R LSP Client]] extension
+           #+CAPTION: Install R LSP Client extension
+           [[file:guix_intro_6_vscode_11_extension_r_lsp.png]]
          - install =languageserver= in R (needed for R LSP Client)
            - should have been setup above
          - install =radian=
@@ -668,6 +708,9 @@ X forwarding may come into handy for viewing plots, or viewing data frames throu
              "Settings", or use the shortcut
            - search =r.bracketedPaste=, and make sure it is enabled
              (ticked)
+
+             #+CAPTION: Extension settings
+             [[file:guix_intro_6_vscode_12_settings.png]]
          - enable =r.alwaysUseActiveTerminal= if we were to manually
            start R in the terminal
            - goto settings
@@ -688,19 +731,34 @@ X forwarding may come into handy for viewing plots, or viewing data frames throu
        2. open folder of the project
           - click "Open Folder" in Explorer
           - find the project folder and click "Ok"
+
+            #+CAPTION: Open project folder
+            [[file:guix_intro_6_vscode_5_open_folder.png]]
        3. open R in terminal
           - if terminal is not ok yet, open one with menu "Terminal"
             -> "New Terminal"
           - in the terminal (which should already be in the project
             directory), type =rcwork= (for plain R) or =rcdwork= (for
             =radian=)
-          - then wait untile R prompt appears
+          - then wait until R prompt appears
+
+            #+CAPTION: Start R in terminal of VSCode
+            [[file:guix_intro_6_vscode_6_rcwork.png]]
        4. then can open any R file that you want to edit, and send
           code (default key Command+Enter in Mac) to the terminal as
           needed
+
+          #+CAPTION: Run R code in VSCode
+          [[file:guix_intro_6_vscode_7_run_code.png]]
+
+          #+CAPTION: Auto-completion (partial) by LSP in VSCode
+          [[file:guix_intro_6_vscode_8_auto_complete.png]]
        5. when done, close connection
           - click the green icon in the bottom left corner
           - choose "Close Connection"
+
+            #+CAPTION: Close remote connection in VSCode
+            [[file:guix_intro_6_vscode_9_close_connection.png]]
 ** Sublime Text 3
 *** Idea
        - use sftp extension for editing files in the vm
@@ -716,6 +774,11 @@ X forwarding may come into handy for viewing plots, or viewing data frames throu
            - https://morannachum.wordpress.com/2015/04/05/how-to-configure-a-sftp-folder-in-sublime/
            - https://notepadhelper.com/sublime-text/ftp-connection-sftp-plugin/
          - first install "Package Control" under "Tools"
+           - https://notepadhelper.com/sublime-text/installation-of-package-control/
+             
+             #+CAPTION: Package Control in Sublime Text 3
+             [[file:guix_intro_6_sublime_text3_1_package_control.png]]
+
          - then under "Sublime Text" -> "Preferences" -> "Package Control", choose "Install package"
          - then type "SFTP", then it will install
          - setup ssh into the server
@@ -861,10 +924,20 @@ X forwarding may come into handy for viewing plots, or viewing data frames throu
        - install R-IDE in Sublime Text
 *** Usage
        1. connect sftp to edit files, can sync when saved (if configured so)
-       2. open terminal, ssh into vm by =ssh vm=, e.g. by using ctrl+alt+t configured above
-       3. go to desired project directory, run =rwork= (for plain R) or =rdwork= (for radian)
-       4. open files to edit, can send text to terminal for evaluation
-       5. when done, just exit R and ssh in the terminal
+          #+CAPTION: SFTP sync in Sublime Text 3
+          [[file:guix_intro_6_sublime_text3_2_sftp_sync.png]]
+       2. open terminal /inside Sublime Text/, e.g. by using Ctrl+Alt+t configured above, then ssh into vm by =ssh vm=
+          #+CAPTION: Ssh into VM in Sublime Text 3
+          [[file:guix_intro_6_sublime_text3_3_ssh_vm.png]]
+       3. go to the desired project directory, run =rwork= (for plain R) or =rdwork= (for radian)
+          #+CAPTION: Start R in Guix environment in Sublime Text 3
+          [[file:guix_intro_6_sublime_text3_4_rwork.png]]
+       4. open files to edit, can send text to terminal for evaluation, e.g. with Command+Enter shortcut (for MacOS)
+          #+CAPTION: Run R code in Sublime Text 3
+          [[file:guix_intro_6_sublime_text3_5_run_code.png]]
+       5. when done, just exit R with =q()= and exit ssh in the terminal
+          #+CAPTION: Close remote connection in Sublime Text 3
+          [[file:guix_intro_6_sublime_text3_6_close_connection.png]]
 ** Emacs
 *** Idea
        - use tramp, which can ssh into the vm
@@ -872,11 +945,17 @@ X forwarding may come into handy for viewing plots, or viewing data frames throu
          - find channels.scm and pkgs.scm from the current directory up to root
          - spawn guix environment
          - execute R, so that we are using the intended environment
-       - in emacs, change =inferior-R-program-name= in ESS to call the prepared command
+       - in emacs, change =inferior-R-program-name= in [[https://ess.r-project.org/][ESS]] to call the prepared command
        - then should be able to use R in emacs as usual
 *** Setup
        - customize tramp for convenience, add to =.emacs= in host:
          #+BEGIN_SRC emacs-lisp
+           ;; For Emacs Speaks Statistics (ESS) to run R
+           (use-package ess
+             :ensure t
+             :init (require 'ess-site)
+             (setq ess-fancy-comments nil))
+
            ;; For connecting in tramp mode to vm
            (use-package tramp
              :ensure nil
@@ -889,12 +968,24 @@ X forwarding may come into handy for viewing plots, or viewing data frames throu
          #+END_SRC
 *** Usage
        1. use tramp to ssh into the desired directory, e.g. =C-x C-f /sshx:vm:guix_demo=
+          #+CAPTION: Ssh to remote using tramp in Emacs
+          [[file:guix_intro_6_emacs_1_tramp.png]]
        2. then navigate to project directory if needed
+          #+CAPTION: Navigate to project directory using dired in Emacs
+          [[file:guix_intro_6_emacs_2_to_project.png]]
        3. start R with =M-x R=
+          #+CAPTION: Start R in Guix environment with ESS in Emacs
+          [[file:guix_intro_6_emacs_3_start_r.png]]
        4. use R in emacs through ESS as usual
           - =C-c C-c= to evaluate block of code
           - =C-c C-r= to evaluate selected region of code
+          - =C-c C-z= to switch back and forth between code buffer and R REPL buffer
+
+            #+CAPTION: Run R code in ESS in Emacs
+            [[file:guix_intro_6_emacs_4_run_code.png]]
        5. when done, just quit R as usual, e.g. using =q()= in the R prompt
+          #+CAPTION: Quit R in Emacs
+          [[file:guix_intro_6_emacs_5_quit_r.png]]
 
 * Un-explored tools
    - [ ] for rstudio
