@@ -5,7 +5,7 @@
 
 #+TITLE: Guix Introduction Part 6: R Development with Guix
 
-#+DATE: 2021-06-15
+#+DATE: 2021-06-27
 
 #+HUGO_TAGS: "Guix" "Functional Package Manager" "Reproducibility"
 #+HUGO_CATEGORIES: "Guix"
@@ -21,10 +21,10 @@ larger scope.
 
 This time we explore the ways to use Guix for per-project dependency
 management, for R development using emacs, jupyter lab, VSCode,
-Sublime. Here we demonstrate with running Guix inside qemu VM in
-MacOS. This setup should work for either local development with Linux
-host running Guix package manager, or when connecting to a remote
-server running Guix package manager. Although we focus on R
+Sublime Text 3. Here we demonstrate with running Guix inside qemu VM
+in MacOS. This setup should work for either local development with
+Linux host running Guix package manager, or when connecting to a
+remote server running Guix package manager. Although we focus on R
 development for data science projects, similar setup should also work
 for Python or other languages.
 
@@ -988,43 +988,71 @@ X forwarding may come into handy for viewing plots, or viewing data frames throu
           [[file:guix_intro_6_emacs_5_quit_r.png]]
 
 * Un-explored tools
-   - [ ] for rstudio
+I originally intended to also include RStudio and Vim or Neovim, but
+did not figure out the details. Nevertheless, I will briefly describe
+the idea to make them work with Guix for per-project dependency
+management.
+
+** RStudio Desktop
+[[https://www.rstudio.com/products/rstudio/download/][RStudio desktop]] is commonly used for R development. Since it by
+default looks for R in the PATH, so starting RStudio desktop in a Guix
+environment should just work in getting the needed project
+dependencies, although I have not tried it.
+
+    - idea:
+      - start Guix environment using =work=
+      - then start RStudio desktop
+      - work as usualxs
+
+** RStudio Server
+[[https://www.rstudio.com/products/rstudio/download/][RStudio server]] is an alternative to RStudio desktop version. While
+thee commercial version has a lot of features useful for use in a
+team, the open source version is much more limited. RStudio server is
+intended to be run in a shared server allowing access to multiple
+users, but the open source version does not allows easily switching
+between different R versions and dependencies. Also, RStudio server
+has its own wrapper of starting an R session, so it is not
+straight-foward to uuse it with Guix for per-project dependency
+management. Nevertheless, someone has configured it to use conda to
+manage per-project dependencies, see
+https://github.com/grst/rstudio-server-conda . Usig the same idea
+should allow using Guix for per-project dependencies instead, but I am
+only half-way through the configuration, and not finished yet.
+
      - idea:
        - use the same idea as in https://github.com/grst/rstudio-server-conda
-       - the idea is to start rstudio server in non-daemon mode, and does not start it as a service
-       - then we can use guix environment to start a new shell with needed dependency, then start rstudio server
-       - then can connect in the browser, if we setup port forwarding properly
-     - setup:
-       - install rstudio server in the VM, which is currently a Debian 10
-         - follow https://rstudio.com/products/rstudio/download-server/debian-ubuntu/ for your Linux
-         - for the current vm, I therefore use:
-           #+BEGIN_SRC shell
-             sudo apt-get install gdebi-core
-             wget https://download2.rstudio.org/server/bionic/amd64/rstudio-server-1.4.1106-amd64.deb
-             sudo gdebi rstudio-server-1.4.1106-amd64.deb
-           #+END_SRC
-       - disable and stop rstudio server service in the VM
-         #+BEGIN_SRC shell
-           sudo systemctl disable rstudio-server.service
-           sudo systemctl stop rstudio-server.service
-         #+END_SRC
-     - usage:
+       - the idea is to start rstudio server in non-daemon mode, and
+         does not start it as a service
+       - then we can use guix environment to start a new shell with
+         needed dependencies, then start RStudio server
+       - then can connect in the browser, if we setup port forwarding
+         properly
+** Vim or Neovim
+Since I do not use R inside Vim, I do not bother getting it to work
+with Guix, but it should be pretty similar to the Sublime Text or
+VSCode setup.
 
-   - [ ] for vim
      - idea:
-       - the vim and related plugins can be installed either in the base debian, or installed through guix to the default profile
-       - create a shell alias to call the command and open vim in it
-       - ssh into the vm, then get to desired directory, then call the alias
-       - then inside the shell, can choose to start R or radian
-     - setup:
-       - [ ] install vim (or neovim)
-     - usage:
+       - the vim and related plugins can be installed either in the
+         base debian, or installed through guix to the default profile
+       - ssh into the VM, then get to desired directory, then start Vim
+       - inside Vim, use the usual workflow, e.g. open a terminal
+       - inside that terminal, start =rwork= for plain R or =rdwork=
+         for =radian=.
+       - edit and send code to the terminal for evaluation
+       - when done, just exit the terminal and quit Vim.
+     - reference:
+       - My colleague Alfred Sam is enthusiatic in using Vim and
+         Neovim for R, Python and Julia development. Interested
+         readers may refer to his these two blog posts:
+         - [[https://alfredfaisam.medium.com/neovim-setups-for-data-science-5ea251e3735f][Neovim Setups for Data Science]]
+         - [[https://medium.com/geekculture/environment-setups-for-data-scientists-under-garuda-linux-ed6492a2a1ab][Environment Setups for Data Scientists under Garuda Linux]]
 
 * What's next?
-  In this part we showed a little demo of using Guix to manage
-  per-project dependencies using the =guix time-machine= and =guix
-  environment= commands, mainly for batch script execution. Next time we
-  attempt to do the same per-project dependency management when you are
-  developing locally (not necessarily in Linux) and connecting to a remote
-  server (or a local VM) with Guix installed.
+  In this part we showed ways of using Guix for per-projecct
+  dependency for R development, using emacs, jupyter lab, VSCode and
+  Sublime Text 3, we also discussed ideas of using Guix with RStudio,
+  Vim and Neovim. This concludes the introduction to Guix, although we
+  still have not covered quite a lot topics. In future posts, we will
+  pick some interesting topics to explore.
 
