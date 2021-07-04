@@ -1,0 +1,82 @@
+#+HUGO_BASE_DIR: ../../
+#+HUGO_SECTION: post
+
+#+HUGO_AUTO_SET_LASTMOD: nil
+
+#+TITLE: More Guix: Private Channel
+
+#+DATE: 2021-07-03
+
+#+HUGO_TAGS: "Guix" "Functional Package Manager" "Reproducibility"
+#+HUGO_CATEGORIES: "Guix"
+#+AUTHOR:
+#+HUGO_CUSTOM_FRONT_MATTER: :author "Peter Lo"
+
+#+HUGO_DRAFT: true
+
+Having introduced the basic ideas of Guix in previous posts, this time
+we explore setting up a private Guix channel. Guix package definitions
+are managed with git repositories called /channels/. There is an
+official channel at https://git.sjtu.edu.cn/sjtug/guix.git, there are
+also third party channels such as https://gitlab.com/nonguix/nonguix
+(for some software which cannot be included in the official
+distribution for ethical or policy-related reasons) and
+https://github.com/guix-science/guix-science.git (for scientific
+software, which cannot be included upstream). Unsurpringly, you can
+setup your own Guix channels for your internal packages.
+
+# summary
+
+* Motivation for private Guix channel
+Although it is recommended that you contribute package definitions to
+Guix proper (see
+https://guix.gnu.org/manual/en/html_node/Creating-a-Channel.html and
+see [[https://guix.gnu.org/manual/en/html_node/Contributing.html][contributing]] for details on how to contribute package
+definitions), there are still reasons that you may want to maintain
+private channels:
+
+- a needed package is not in the official channel (yet):
+
+  If a needed package is not currently available in the official
+  channel (or other third party channel), then you can either try to
+  import it with =guix import= (see [[https://guix.gnu.org/manual/en/html_node/Invoking-guix-import.html#Invoking-guix-import][Invoking guix import]]), or write
+  the package definition yourself. After that, you are encouraged to
+  submit a patch to add the package to the official Guix channel (see
+  [[https://guix.gnu.org/manual/en/html_node/Contributing.html][contributing]] for details). But it takes time for the maintainers to
+  review and merge the patch, meanwhile, you may choose to add the new
+  package definition to your private channel, so that you can continue
+  with your work.
+
+- a package is internal which should not be made public:
+
+  If a needed package is some package that you do not wish to make
+  public, e.g. internal package in your company, it is natural to put
+  the package definition in a private channel, so that you can still
+  enjoy the benefits of Guix for dependency management.
+
+* Private Guix channel as git repository
+For convenience, we setup a git repository on [[https://github.com/][Github]], but other git
+repository provides such as [[https://about.gitlab.com/][GitLab]], [[https://bitbucket.org/][Bitbucket]] should also work just
+fine.
+
+Reference: [[https://guix.gnu.org/manual/en/html_node/Creating-a-Channel.html][Creating a Channel]]
+
+TODO
+
+1. Create a Github account at [[https://github.com/signup?ref_cta=Sign+up&ref_loc=header+logged+out&ref_page=%2F&source=header-home][Sign up]] if you do not already have one
+2. Setup SSH key for Github for convenience
+   - Refer to [[https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account][Adding a new SSH key to your GitHub account]] to
+     conveniently access your Github account and private repositories
+     without entering password
+3. Create a (private) git repository
+   - 
+4. Add person package definitions
+5. Test the private channel
+
+* Channel Authentication
+
+** GPG key
+
+** Signing git commits
+
+* Summary
