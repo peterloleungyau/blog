@@ -59,6 +59,7 @@ For convenience, we setup a git repository on [[https://github.com/][Github]], b
 repository provides such as [[https://about.gitlab.com/][GitLab]], [[https://bitbucket.org/][Bitbucket]] should also work just
 fine.
 
+** Create a simple private Guix channel
 Reference: [[https://guix.gnu.org/manual/en/html_node/Creating-a-Channel.html][Creating a Channel]]
 
 TODO
@@ -69,9 +70,37 @@ TODO
      conveniently access your Github account and private repositories
      without entering password
 3. Create a (private) git repository
-   - 
-4. Add person package definitions
-5. Test the private channel
+   1. Signin your github account
+   2. Click "New repository" in the "+" drop down menu at top right corner
+      - Fill in the "Repository name", here we use =my-guix-pkgs=
+      - Optionally fill in description, e.g. "my private channel of Guix packages"
+      - choose whether this repository is "Public" or "Private". For illustration of internal packages, we choose "Private".
+      - Optionally choose whether to initialize with a =README.md= file, a =.gitignore=, and a license.
+      - Click "Create repository" to finish
+
+        #+CAPTION Create new repository on Github
+        [[file:more_guix_private_channel_create_repo.png]]
+
+   3. Follow the instructions to clone it to your local machine, repeated here for convenience:
+      - In your terminal, assuming you also have [[https://git-scm.com/downloads][git]] installed, clone
+        with =git clone= command, note that the exact url will depend
+        on your Github user name and your chosen repository name:
+        #+begin_src shell
+          # note that your url may be different, depending on your username and chosen repo name
+          # the general url will be git@github.com:<user-name>/<repository-name>.git
+          # also, we choose "SSH" because we alreay have setup the SSH key
+          git clone git@github.com:peterloleungyau/my-guix-pkgs.git
+        #+end_src
+      - Note that if you have not added anything (e.g. README.md,
+        =.gitignore=, or license) in the previous step, your
+        repository will now be empty, but we will add content to it
+        soon.
+4. Add personal package definitions
+   1. a
+6. Test the private channel
+
+** Demo: add a sample R package built from github
+TODO
 
 * Channel Authentication
 
