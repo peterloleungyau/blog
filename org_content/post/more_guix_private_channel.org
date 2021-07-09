@@ -66,9 +66,44 @@ TODO
 
 1. Create a Github account at [[https://github.com/signup?ref_cta=Sign+up&ref_loc=header+logged+out&ref_page=%2F&source=header-home][Sign up]] if you do not already have one
 2. Setup SSH key for Github for convenience
-   - Refer to [[https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account][Adding a new SSH key to your GitHub account]] to
-     conveniently access your Github account and private repositories
-     without entering password
+   - Refer to [[https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent][Generating a new SSH key and adding it to the ssh-agent]]
+     and [[https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account][Adding a new SSH key to your GitHub account]] to conveniently
+     access your Github account and private repositories without
+     entering password
+   - NOTE: I previously generated SSH key following the above
+     guidelines from Github, and can push to and pull from my private
+     repository just fine. But at the later testing step, Guix is
+     unable to access the private channel with this error:
+     #+begin_src shell
+       $ guix time-machine -C channels.scm --disable-authentication --
+       environment --ad-hoc python-radian
+       Updating channel 'guix' from Git repository at
+       'https://git.savannah.gnu.org/git/guix.git'...
+       guix time-machine: warning: channel authentication disabled
+       Updating channel 'my-guix-pkgs' from Git repository at
+       'git@github.com:peterloleungyau/my-guix-pkgs.git'...
+       guix time-machine: error: Git error: Failed to retrieve list of SSH
+       authentication methods: Failed getting response
+     #+end_src
+
+     After some googling, it seems to be bug in =libssh2= which Guix
+     uses for retrieving private channels:
+     - https://github.com/libgit2/pygit2/issues/1013
+     - https://github.com/saltstack/salt/issues/57121
+     
+     The suggested workaround is to generate the key in PEM format by
+     using the option =-m PEM= in =ssh-keygen=, so I have tried this
+     command to generate the SSH key and follow the rest of the
+     instructions to add the public key to Github (and moved the SSH
+     keys from my =~/.ssh/= to a temporary folder) and then Guix can
+     access the private repository:
+     #+begin_src shell
+       ssh-keygen -m PEM -t rsa -b 4096 -C "peterloleungyau@gmail.com"
+     #+end_src
+
+     So if at the time that you are reading this and get the same
+     error as above (which means the bug in =libssh2= is probably
+     still unfixed), then you may try the above workaround.
 3. Create a (private) git repository
    1. Signin your github account
    2. Click "New repository" in the "+" drop down menu at top right corner
@@ -116,18 +151,19 @@ TODO
       =python-radian= which is only needed when the file is used with
       the =-l= option, but not needed in a channel):
       #+begin_src scheme
-        (use-modules (guix)
-                     (guix licenses)
-                     (guix download)
-                     (guix git-download)
-                     (gnu packages statistics)
-                     (gnu packages python)
-                     (gnu packages python-science)
-                     (gnu packages python-xyz)
-                     (gnu packages libffi)
-                     (gnu packages check)
-                     (gnu packages terminals)
-                     (guix build-system python))
+        (define-module (my-packages ds-tools)
+          #:use-module (guix)
+          #:use-module (guix licenses)
+          #:use-module (guix download)
+          #:use-module (guix git-download)
+          #:use-module (gnu packages statistics)
+          #:use-module (gnu packages python)
+          #:use-module (gnu packages python-science)
+          #:use-module (gnu packages python-xyz)
+          #:use-module (gnu packages libffi)
+          #:use-module (gnu packages check)
+          #:use-module (gnu packages terminals)
+          #:use-module (guix build-system python))
 
         (define-public python-lineedit
           (package
@@ -277,6 +313,31 @@ TODO
 
 5. Test the private channel
 
+   1. Create a channels file =channels.scm= somewhere, e.g. at =~/=:
+      #+begin_src scheme
+        (list (channel
+               (name 'guix)
+               (url "https://git.savannah.gnu.org/git/guix.git")
+               (commit "9904a15a4c838362673c1affdbaf1e83d92fe8ff"))
+              (channel
+               (name 'my-guix-pkgs)
+               (url "git@github.com:peterloleungyau/my-guix-pkgs.git")
+               (commit "8cacb5380cb0339bd36238173d80354539ca4a59")
+               (branch "master")))
+
+      #+end_src
+      Note that it is recommended that you explicitly specify the
+      branch of the private channel, and you should check whether the
+      default branch is =master= or =main=, e.g. by checking from your
+      Github.
+
+   2. Try to create a Guix environment by:
+      #+begin_src shell
+        # replace ~/channels.scm with the proper path to your created channels.scm
+        guix time-machine -C ~/channels.scm -- environment --ad-hoc python-radian -- radian
+      #+end_src
+
+      Then wait a while, if all goes well, then you should be in a =radian= console.
 ** Demo: add a sample R package built from github
 TODO
 
