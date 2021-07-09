@@ -331,6 +331,12 @@ TODO
       default branch is =master= or =main=, e.g. by checking from your
       Github.
 
+      Also, you should replace the commit of =my-guix-pkgs= with the
+      commit of your private channel repository, which you can check
+      with =git log= in that repository. Yours may not be the same as
+      mine here, because I made more than one commit in creating the
+      respository above.
+
    2. Try to create a Guix environment by:
       #+begin_src shell
         # replace ~/channels.scm with the proper path to your created channels.scm
