@@ -23,7 +23,8 @@ also third party channels such as https://gitlab.com/nonguix/nonguix
 distribution for ethical or policy-related reasons) and
 https://github.com/guix-science/guix-science.git (for scientific
 software, which cannot be included upstream). Unsurpringly, you can
-setup your own Guix channels for your internal packages.
+setup your own Guix channels for your internal packages. This time we
+explore setting up private channels for your custom packages.
 
 # summary
 
@@ -96,7 +97,8 @@ TODO
      command to generate the SSH key and follow the rest of the
      instructions to add the public key to Github (and moved the SSH
      keys from my =~/.ssh/= to a temporary folder) and then Guix can
-     access the private repository:
+     access the private repository (from both Guix in foreign
+     distribution and Guix system):
      #+begin_src shell
        ssh-keygen -m PEM -t rsa -b 4096 -C "peterloleungyau@gmail.com"
      #+end_src
@@ -331,20 +333,63 @@ TODO
       default branch is =master= or =main=, e.g. by checking from your
       Github.
 
-      Also, you should replace the commit of =my-guix-pkgs= with the
+      Also, you should replace the commit of =my-guix-pkgs=
+      (=8cacb5380cb0339bd36238173d80354539ca4a59=) above with the
       commit of your private channel repository, which you can check
       with =git log= in that repository. Yours may not be the same as
       mine here, because I made more than one commit in creating the
       respository above.
+      #+begin_src shell
+        $ git log
+        commit 8cacb5380cb0339bd36238173d80354539ca4a59 (HEAD -> master, origin/master, origin/HEAD)
+        Author: Peter Lo <peterloleungyau@gmail.com>
+        Date:   Thu Jul 8 00:28:35 2021 +0800
+
+            Define module for ds-tools.
+
+        commit b51d236ebbbdd134bafb64e5092342a2d058ec2a
+        Author: Peter Lo <peterloleungyau@gmail.com>
+        Date:   Wed Jul 7 00:12:31 2021 +0800
+
+            Added ds-tools.scm
+        (END)
+
+      #+end_src
 
    2. Try to create a Guix environment by:
       #+begin_src shell
         # replace ~/channels.scm with the proper path to your created channels.scm
-        guix time-machine -C ~/channels.scm -- environment --ad-hoc python-radian -- radian
+        guix time-machine -C ~/channels.scm -- environment --ad-hoc python-radian r-minimal -- radian
       #+end_src
 
-      Then wait a while, if all goes well, then you should be in a =radian= console.
-** Demo: add a sample R package built from github
+      Then wait a while, if all goes well, then you should be in a
+      =radian= console.
+** Demo: add a sample R package built from Github
+We also try to add a custom R package to our private channel, and also
+put the R package in a private repository, to illustrate creating
+internal package.
+
+1. Repository for R package
+   - Reference for creating R package: the book [[https://r-pkgs.org/index.html][R Packages]] by Hadley
+     Wickham and Jenny Bryan. [[https://r-pkgs.org/whole-game.html][Chapter 2]] of the book gives an example
+     of creating a toy package.
+   - [[https://gist.github.com/peterhurford/f71bf00d8866094eac6c][Notes on Hadley's "R Packages"]] gives a quick summary of the book.
+   - The book has an example R package at
+     [[https://github.com/jennybc/foofactors]] which is a good example
+     because it depends on the [[https://rdrr.io/cran/forcats/man/forcats-package.html][forcats]] package, which is available as
+     =r-forcats=.
+   - We could have used this repository directly if we want to test a
+     R package at public repository.
+   - Since we want to test a R at private repository, we will clone
+     the repository and create a private one. I tried forking the
+     repository, but after that Github does not allow changing the
+     forked repository from public to private "for security reasons".
+     + 
+2. Package definition for the R package
+3. Test building the package from Guix
+   1. Update the channels for updated commit
+   2. Try to create a Guix environment
+
 TODO
 
 * Channel Authentication
