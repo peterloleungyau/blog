@@ -392,8 +392,6 @@ internal package.
           git clone https://github.com/jennybc/foofactors.git
         #+end_src
 
-        #+RESULTS:
-
      2. Create a *private* empty repository at Github using the same
         steps as above in creating the private channel repository. I
         will keep the same name for this respository,
@@ -481,7 +479,8 @@ internal package.
      - name: =r-sankeyd3=, the Guix convention for R package is to
        have the =r-= prefix, and prefer lower case.
      - commit: =fd50a74e29056e0d67d75b4d04de47afb2f932bc= is the git commit
-     - revision: seems here just for the version name
+     - version: 0.3.2
+     - revision: "1", seems here just for the version name
      - url: the URL of the git repository
      - sha256: seems some kind of hash in base32 format
      - build-system: =r-build-system= as this is a R package
@@ -493,7 +492,116 @@ internal package.
      - description: a longer description of the package
      - license: seems can specify one or more licenses as a list
    - We therefore need to figure out these information for =foofactors=
-     - TODO
+   - The =foofactors/DESCRIPTION= provides a lot of useful information, reproduced below for convenience:
+     #+begin_src text
+       Package: foofactors
+       Title: Make Factors Less Aggravating
+       Version: 0.0.0.9000
+       Authors@R:
+           person("Jane", "Doe", email = "jane@example.com", role = c("aut", "cre"))
+       Description: Factors have driven people to extreme measures, like ordering
+           custom conference ribbons and laptop stickers to express how HELLNO we
+           feel about stringsAsFactors. And yet, sometimes you need them. Can they
+           be made less maddening? Let's find out.
+       License: MIT + file LICENSE
+       Encoding: UTF-8
+       LazyData: true
+       RoxygenNote: 7.1.1
+       Suggests: 
+           testthat
+       Imports: 
+           forcats
+
+     #+end_src
+     - name: following the convention we will use =r-foofactors=
+     - version: 0.0.0.9000
+     - revision: can juse use 1
+     - commit: determined above using =git log= to be =ef71e8d2e82fa80e0cfc249fd42f50c01924326d=
+     - url: the URL of the private repository
+       [[git@github.com:peterloleungyau/foofactors.git][git@github.com:peterloleungyau/foofactors.git]]
+     - sha256: this is a hash of the source content
+       - if the source is fetched with =url-fetch=, then we can use
+         =guix download= command at the terminal to download and
+         calculate the hash
+       - but since we now the source is fetched with =git-fetch=,
+         currently =guix download= does not support this
+       - instead, according to the [[https://guix.gnu.org/cookbook/en/html_node/Extended-example.html][Extended example]] of Guix packing,
+         we can use =guix hash= on the *freshly* cloned repository as
+         follows:
+         #+begin_src shell
+           # clone the repository, make sure the content is not changed
+           git clone git@github.com:peterloleungyau/foofactors.git
+           # go to the repo
+           cd foofactors
+           # checkout the lastest commit
+           # alternatively, you can checkout a specific commit
+           git checkout HEAD
+           # finally calculate hash
+           guix hash -rx .
+         #+end_src
+       - in our case, the calculated hash is =1hmfwac2zdl8x6r21yy5b257c4891106ana4j81hfn6rd0rl9f72=
+     - build-system: =r-build-system= as this is a R package
+     - propagated-inputs: this package imports =forcats=, so include
+       =r-focats= which is in Guix's official repository already
+     - home-page: can simply use the original Github repository
+       https://github.com/jennybc/foofactors
+     - synopsis: a short description, maybe modify frmo the title "A R package to make factors less aggravating."
+     - description: just copy the description above.
+     - license: MIT license, but seems Guix does not have MIT license
+       in =guix/licenses.scm=. From the Guix package definition files,
+       seems for MIT license, =license:expat= is used.
+   - With the above determined information, and referring to
+     =gnu/packages/cran.scm= of the Guix repository to add some needed
+     modules, we add the following file to our local channel
+     repository at =~/my-packages/r-pkgs.scm=:
+     #+begin_src scheme
+       (define-module (my-packages r-pkgs)
+         #:use-module ((guix licenses) #:prefix license:)
+         #:use-module (guix packages)
+         #:use-module (guix download)
+         #:use-module (guix git-download)
+         #:use-module (guix utils)
+         #:use-module (guix build-system r)
+         #:use-module (gnu packages)
+         #:use-module (gnu packages statistics))
+
+       (define-public r-foofactors
+         (let ((commit "ef71e8d2e82fa80e0cfc249fd42f50c01924326d")
+               (revision "1"))
+           (package
+             (name "r-foofactors")
+             (version (git-version "0.0.0.9000" revision commit))
+             (source
+              (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "git@github.com:peterloleungyau/foofactors.git")
+                      (commit commit)))
+                (file-name (git-file-name name version))
+                (sha256
+                 (base32
+                  "1hmfwac2zdl8x6r21yy5b257c4891106ana4j81hfn6rd0rl9f72"))))
+             (build-system r-build-system)
+             (propagated-inputs
+              `(("r-forcats" ,r-forcats)))
+             (home-page "https://github.com/jennybc/foofactors")
+             (synopsis "A R package to make factors less aggravating.")
+             (description
+              "Factors have driven people to extreme measures, like ordering
+       custom conference ribbons and laptop stickers to express how HELLNO we
+       feel about stringsAsFactors. And yet, sometimes you need them. Can they
+       be made less maddening? Let's find out.")
+             (license license:expat))))
+     #+end_src
+
+     Note that we define a module corresponding the path of the file,
+     and we use some modules that seem to be needed, and also the
+     =(gnu packages statistics)= module because the package depends on
+     =r-forcats= which resides in =(gnu packages statistics)= by
+     checking with =guix search r-forcats= which shows the location of
+     the file to be =gnu/packages/statistics.scm:5588:2=.
+   - Local testing before commit and push
+     TODO
 3. Test building the package from Guix
    1. Update the channels for updated commit
    2. Try to create a Guix environment
