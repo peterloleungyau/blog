@@ -106,6 +106,10 @@ TODO
      So if at the time that you are reading this and get the same
      error as above (which means the bug in =libssh2= is probably
      still unfixed), then you may try the above workaround.
+
+   - Make sure your ssh-agent is setup properly so that the key(s)
+     added persist across reboots. E.g. refer to
+     https://stackoverflow.com/questions/3466626/how-to-permanently-add-a-private-key-with-ssh-add-on-ubuntu
 3. Create a (private) git repository
    1. Signin your github account
    2. Click "New repository" in the "+" drop down menu at top right corner
@@ -378,9 +382,9 @@ internal package.
      [[https://github.com/jennybc/foofactors]] which is a good example
      because it depends on the [[https://rdrr.io/cran/forcats/man/forcats-package.html][forcats]] package, which is available as
      =r-forcats=.
-   - We could have used this repository directly if we want to test a
+   - We could have used this repository directly if we want to test an
      R package at public repository.
-   - Since we want to test a R at private repository, we will clone
+   - Since we want to test an R at private repository, we will clone
      the repository and create a private one. I tried forking the
      repository, but after that Github does not allow changing the
      forked repository from public to private "for security reasons".
@@ -415,7 +419,7 @@ internal package.
    - Besides using =guix import= to import existing package (e.g. from
      CRAN), the easiest way to write a package definition is to modify
      from a similar package.
-   - In our case, we want to write a package definition for a R
+   - In our case, we want to write a package definition for na R
      package at Github.
    - It would be convenient to clone the official Guix repository
      (https://git.savannah.gnu.org/git/guix.git) to your local
@@ -483,7 +487,7 @@ internal package.
      - revision: "1", seems here just for the version name
      - url: the URL of the git repository
      - sha256: seems some kind of hash in base32 format
-     - build-system: =r-build-system= as this is a R package
+     - build-system: =r-build-system= as this is an R package
      - propagated-inputs: the dependencies, which will be installed
        /visibly/ (i.e. as if the user also manually install the
        propagated input) together with this package
@@ -492,7 +496,8 @@ internal package.
      - description: a longer description of the package
      - license: seems can specify one or more licenses as a list
    - We therefore need to figure out these information for =foofactors=
-   - The =foofactors/DESCRIPTION= provides a lot of useful information, reproduced below for convenience:
+   - The =foofactors/DESCRIPTION= provides a lot of useful
+     information, reproduced below for convenience:
      #+begin_src text
        Package: foofactors
        Title: Make Factors Less Aggravating
@@ -540,20 +545,19 @@ internal package.
            guix hash -rx .
          #+end_src
        - in our case, the calculated hash is =1hmfwac2zdl8x6r21yy5b257c4891106ana4j81hfn6rd0rl9f72=
-     - build-system: =r-build-system= as this is a R package
+     - build-system: =r-build-system= as this is an R package
      - propagated-inputs: this package imports =forcats=, so include
        =r-focats= which is in Guix's official repository already
      - home-page: can simply use the original Github repository
        https://github.com/jennybc/foofactors
      - synopsis: a short description, maybe modify frmo the title "A R package to make factors less aggravating."
      - description: just copy the description above.
-     - license: MIT license, but seems Guix does not have MIT license
-       in =guix/licenses.scm=. From the Guix package definition files,
-       seems for MIT license, =license:expat= is used.
+     - license: MIT license, which is called [[https://www.gnu.org/licenses/license-list.html#Expat][expat]] in Guix, which is
+       =license:expat= in =guix/licenses.scm=.
    - With the above determined information, and referring to
      =gnu/packages/cran.scm= of the Guix repository to add some needed
      modules, we add the following file to our local channel
-     repository at =~/my-packages/r-pkgs.scm=:
+     repository at =~/my-guix-pkgs/my-packages/r-pkgs.scm=:
      #+begin_src scheme
        (define-module (my-packages r-pkgs)
          #:use-module ((guix licenses) #:prefix license:)
@@ -600,13 +604,125 @@ internal package.
      =r-forcats= which resides in =(gnu packages statistics)= by
      checking with =guix search r-forcats= which shows the location of
      the file to be =gnu/packages/statistics.scm:5588:2=.
+     
+     But the above package definition has not been tested yet, and as
+     we will see, it has problem that needs a workaround.
    - Local testing before commit and push
-     TODO
-3. Test building the package from Guix
-   1. Update the channels for updated commit
-   2. Try to create a Guix environment
+     - Before commiting and pushing the package definition, it is good
+       to first test building and using it locally, so that we can fix
+       problem in the package definition.
+     - We may try to build it using =guix build=, with the =-L=
+       option, we can specify extra path containing modules to be
+       prepended to existing channels, so that we can test the
+       packages not yet committed to the channel.
+       #+begin_src shell
+         # use the previous channels file, so that its dependencies will be consistent.
+         guix time-machine -C ~/channels.scm -- build -L ~/my-guix-pkgs/ r-foofactors
 
-TODO
+       #+end_src
+
+       But then this gave error that "ssh" is not found, so the
+       =git-fetch= is unable to fetch from private repository. Asking
+       in [[guix-devel@gnu.org][guix-devel@gnu.org]] confirms that currently =git-fetch= is
+       indeed unable to fetch private repository over ssh, and Luis
+       Felipe suggested a workaround of using =git-checkout= directly
+       instead of using =origin= and =git-fetch=:
+       - https://lists.gnu.org/archive/html/guix-devel/2021-07/msg00090.html
+       - https://lists.gnu.org/archive/html/guix-devel/2021-07/msg00091.html
+     - We therefore modify the package definition above to use
+       =git-checkout= and confirmed that it can be built successfully
+       (assuming your SSH key and ssh-agent has been setup correctly):
+       #+begin_src scheme
+         (define-module (my-packages r-pkgs)
+           #:use-module ((guix licenses) #:prefix license:)
+           #:use-module (guix packages)
+           #:use-module (guix download)
+           #:use-module (guix git)
+           #:use-module (guix git-download)
+           #:use-module (guix utils)
+           #:use-module (guix build-system r)
+           #:use-module (gnu packages)
+           #:use-module (gnu packages statistics))
+
+         (define-public r-foofactors
+           (let ((commit "ef71e8d2e82fa80e0cfc249fd42f50c01924326d")
+                 (revision "1"))
+             (package
+               (name "r-foofactors")
+               (version (git-version "0.0.0.9000" revision commit))
+               (source
+                (git-checkout
+                 (url "git@github.com:peterloleungyau/foofactors.git")
+                 (commit commit)))
+               (build-system r-build-system)
+               (propagated-inputs
+                `(("r-forcats" ,r-forcats)))
+               (home-page "https://github.com/jennybc/foofactors")
+               (synopsis "A R package to make factors less aggravating.")
+               (description
+                "Factors have driven people to extreme measures, like ordering
+         custom conference ribbons and laptop stickers to express how HELLNO we
+         feel about stringsAsFactors. And yet, sometimes you need them. Can they
+         be made less maddening? Let's find out.")
+               (license license:expat))))
+
+       #+end_src
+
+       Note that we added =(guix git)= module for =git-checkout=. We
+       also changed =origin= to =git-checkout=, and the source hash is
+       now not needed. Since a commit of a git repository is already
+       some kind of hash, we can still be confident that the source is
+       not tempered with.
+     - Now that the package can be built, we also try it in a =guix
+       environment= which can also accept the =-L= option for extra
+       module path, together with R:
+       #+begin_src shell
+         guix time-machine -C ~/channels.scm -- environment -L ~/my-guix-pkgs/ --ad-hoc r-foofactors r-minimal -- R
+       #+end_src
+
+       This should give an R REPL, then we may try the quick demo
+       shown in the README of https://github.com/jennybc/foofactors
+   - After the local testing, can may update the private channel,
+     commit and push:
+     #+begin_src shell
+       # get to the private repository directory
+       cd ~/my-guix-pkgs/
+       # add, commit, push
+       git add my-packages/r-pkgs.scm
+       git commit -m "Added r-foofactors."
+       git push
+       # also note the latest commit
+       git log
+     #+end_src
+3. Test the package from Guix
+   1. Update the channels for updated commit
+      
+      With the updated private channel, we also update the channels
+      file =~/channels.scm= for updated commit, which is
+      =13255b9d3550bc8b2ff8b987d3d5621447783a3f= from =git log=:
+
+      #+begin_src scheme
+        (list (channel
+               (name 'guix)
+               (url "https://git.savannah.gnu.org/git/guix.git")
+               (commit "9904a15a4c838362673c1affdbaf1e83d92fe8ff"))
+              (channel
+               (name 'my-guix-pkgs)
+               (url "git@github.com:peterloleungyau/my-guix-pkgs.git")
+               (commit "13255b9d3550bc8b2ff8b987d3d5621447783a3f")
+               (branch "master")))
+      #+end_src
+
+      In general, when a channel is updated, it is just a simple
+      matter of updating the commit in channels file as above, /when/
+      a project needs to use the updated package(s),
+   2. Try to create a Guix environment with updated channels file
+      #+begin_src shell
+        guix time-machine -C ~/channels.scm -- environment --ad-hoc r-foofactors r-minimal -- R
+      #+end_src
+
+      And we can try the same quick demo as above, and verify that we
+      get the expected results.
 
 * Channel Authentication
 
