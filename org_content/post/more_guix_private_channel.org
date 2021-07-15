@@ -3,16 +3,16 @@
 
 #+HUGO_AUTO_SET_LASTMOD: nil
 
-#+TITLE: More Guix: Private Channel
+#+TITLE: More Guix: Private Channel and Internal Package
 
-#+DATE: 2021-07-03
+#+DATE: 2021-07-15
 
 #+HUGO_TAGS: "Guix" "Functional Package Manager" "Reproducibility"
 #+HUGO_CATEGORIES: "Guix"
 #+AUTHOR:
 #+HUGO_CUSTOM_FRONT_MATTER: :author "Peter Lo"
 
-#+HUGO_DRAFT: true
+#+HUGO_DRAFT: false
 
 Having introduced the basic ideas of Guix in previous posts, this time
 we explore setting up a private Guix channel. Guix package definitions
@@ -22,16 +22,18 @@ also third party channels such as https://gitlab.com/nonguix/nonguix
 (for some software which cannot be included in the official
 distribution for ethical or policy-related reasons) and
 https://github.com/guix-science/guix-science.git (for scientific
-software, which cannot be included upstream). Unsurpringly, you can
+software, which cannot be included upstream). Unsurprisingly, you can
 setup your own Guix channels for your internal packages. This time we
-explore setting up private channels for your custom packages.
+explore setting up private channels for your custom packages. With the
+private channel and custom packages, we could enjoy the benefits of
+Guix in per-project dependency management (and other benefits) by
+maintaining a channels file and a manifest file for each project.
 
 # summary
 
 * Motivation for private Guix channel
 Although it is recommended that you contribute package definitions to
-Guix proper (see
-https://guix.gnu.org/manual/en/html_node/Creating-a-Channel.html and
+Guix proper (see [[https://guix.gnu.org/manual/en/html_node/Creating-a-Channel.html][Creating a Channel]] and
 see [[https://guix.gnu.org/manual/en/html_node/Contributing.html][contributing]] for details on how to contribute package
 definitions), there are still reasons that you may want to maintain
 private channels:
@@ -39,38 +41,36 @@ private channels:
 - a needed package is not in the official channel (yet):
 
   If a needed package is not currently available in the official
-  channel (or other third party channel), then you can either try to
+  channel (or other third party channels), then you can either try to
   import it with =guix import= (see [[https://guix.gnu.org/manual/en/html_node/Invoking-guix-import.html#Invoking-guix-import][Invoking guix import]]), or write
   the package definition yourself. After that, you are encouraged to
   submit a patch to add the package to the official Guix channel (see
   [[https://guix.gnu.org/manual/en/html_node/Contributing.html][contributing]] for details). But it takes time for the maintainers to
-  review and merge the patch, meanwhile, you may choose to add the new
+  review and merge the patch. Meanwhile, you may choose to add the new
   package definition to your private channel, so that you can continue
   with your work.
 
-- a package is internal which should not be made public:
+- a package is internal and should not be made public:
 
-  If a needed package is some package that you do not wish to make
-  public, e.g. internal package in your company, it is natural to put
-  the package definition in a private channel, so that you can still
-  enjoy the benefits of Guix for dependency management.
+  If you do not wish to make a needed package public, e.g. internal
+  package in your company, it is natural to put the package definition
+  in a private channel, so that you can still enjoy the benefits of
+  Guix for dependency management.
 
 * Private Guix channel as git repository
 For convenience, we setup a git repository on [[https://github.com/][Github]], but other git
-repository provides such as [[https://about.gitlab.com/][GitLab]], [[https://bitbucket.org/][Bitbucket]] should also work just
+repository providers such as [[https://about.gitlab.com/][GitLab]], [[https://bitbucket.org/][Bitbucket]] should also work just
 fine.
 
 ** Create a simple private Guix channel
 Reference: [[https://guix.gnu.org/manual/en/html_node/Creating-a-Channel.html][Creating a Channel]]
-
-TODO
 
 1. Create a Github account at [[https://github.com/signup?ref_cta=Sign+up&ref_loc=header+logged+out&ref_page=%2F&source=header-home][Sign up]] if you do not already have one
 2. Setup SSH key for Github for convenience
    - Refer to [[https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent][Generating a new SSH key and adding it to the ssh-agent]]
      and [[https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account][Adding a new SSH key to your GitHub account]] to conveniently
      access your Github account and private repositories without
-     entering password
+     entering password.
    - NOTE: I previously generated SSH key following the above
      guidelines from Github, and can push to and pull from my private
      repository just fine. But at the later testing step, Guix is
@@ -87,15 +87,15 @@ TODO
        authentication methods: Failed getting response
      #+end_src
 
-     After some googling, it seems to be bug in =libssh2= which Guix
+     After some googling, it seems to be a bug in =libssh2= which Guix
      uses for retrieving private channels:
      - https://github.com/libgit2/pygit2/issues/1013
      - https://github.com/saltstack/salt/issues/57121
      
      The suggested workaround is to generate the key in PEM format by
      using the option =-m PEM= in =ssh-keygen=, so I have tried this
-     command to generate the SSH key and follow the rest of the
-     instructions to add the public key to Github (and moved the SSH
+     command to generate the SSH key and followed the rest of the
+     instructions to add the public key to Github (and moved my old SSH
      keys from my =~/.ssh/= to a temporary folder) and then Guix can
      access the private repository (from both Guix in foreign
      distribution and Guix system):
@@ -111,11 +111,11 @@ TODO
      added persist across reboots. E.g. refer to
      https://stackoverflow.com/questions/3466626/how-to-permanently-add-a-private-key-with-ssh-add-on-ubuntu
 3. Create a (private) git repository
-   1. Signin your github account
+   1. Signin your GitHub account
    2. Click "New repository" in the "+" drop down menu at top right corner
       - Fill in the "Repository name", here we use =my-guix-pkgs=
       - Optionally fill in description, e.g. "my private channel of Guix packages"
-      - choose whether this repository is "Public" or "Private". For illustration of internal packages, we choose "Private".
+      - choose whether this repository is "Public" or "Private". For illustration of internal packages, we choose "Private". You may also choose to make the channel public, i.e. as a third party channel.
       - Optionally choose whether to initialize with a =README.md= file, a =.gitignore=, and a license.
       - Click "Create repository" to finish
 
@@ -123,29 +123,30 @@ TODO
         [[file:more_guix_private_channel_create_repo.png]]
 
    3. Follow the instructions to clone it to your local machine, repeated here for convenience:
-      - In your terminal, assuming you also have [[https://git-scm.com/downloads][git]] installed, clone
-        with =git clone= command, note that the exact url will depend
+      - In your terminal, assuming you already have [[https://git-scm.com/downloads][git]] installed, clone
+        with the =git clone= command, note that the exact URL will depend
         on your Github user name and your chosen repository name:
         #+begin_src shell
           # note that your url may be different, depending on your username and chosen repo name
           # the general url will be git@github.com:<user-name>/<repository-name>.git
-          # also, we choose "SSH" because we alreay have setup the SSH key
+          # also, we choose "SSH" because we already have setup the SSH key
           git clone git@github.com:peterloleungyau/my-guix-pkgs.git
         #+end_src
       - Note that if you have not added anything (e.g. README.md,
         =.gitignore=, or license) in the previous step, your
         repository will now be empty, but we will add content to it
         soon.
-4. Add personal package definitions The repository can contain package
-   definitions organized as [[https://www.gnu.org/software/guile/manual/guile.html#Modules][Guile modules]], as different
-   sub-directories. For example, if you have a file
-   =my-packages/ds-tools.scm=, it corresponds to a Guile module
+4. Add personal package definitions
+
+   The repository can contain package definitions organized as [[https://www.gnu.org/software/guile/manual/guile.html#Modules][Guile
+   modules]], as different sub-directories. For example, if you have a
+   file =my-packages/ds-tools.scm=, it corresponds to a Guile module
    =(my-packages ds-tools)=. You may organize the packages in a
    sensible way you like.
 
    For this illustration, we first create one file in the
-   repository. At the time of writing, [[https://pypi.org/project/radian/][radian]] which is "A 21 century R
-   console" is still not in the official Guix repository. And in a
+   repository. At the time of writing, [[https://pypi.org/project/radian/][radian]], which is "A 21 century R
+   console", is still not in the official Guix repository. And in a
    previous post [[file:guix_intro_6_dev.org][Guix Introduction Part 6: R Development with Guix]] we
    used =guix import= to import the relevant package and dependencies
    for =radian= (I know, I should have submitted this to the Guix
@@ -300,21 +301,21 @@ TODO
    2. Commit and push the file: in the terminal, in the directory of
       your cloned repository, type:
       #+begin_src shell
-        # at the repository direcotry
+        # at the repository directory
         # stage the file
         git add my-packages/ds-tools.scm
 
-        # check the file is properly added
+        # check that the file is properly added
         git status
 
         # commit, with a commit message
         git commit -m "Added ds-tools.scm"
 
-        # push to github
+        # push to GitHub
         git push
       #+end_src
 
-      Now if you go to your github repository, you should also see the
+      Now if you go to your GitHub repository, you should also see the
       committed file.
 
 5. Test the private channel
@@ -342,7 +343,7 @@ TODO
       commit of your private channel repository, which you can check
       with =git log= in that repository. Yours may not be the same as
       mine here, because I made more than one commit in creating the
-      respository above.
+      repository above.
       #+begin_src shell
         $ git log
         commit 8cacb5380cb0339bd36238173d80354539ca4a59 (HEAD -> master, origin/master, origin/HEAD)
@@ -366,11 +367,11 @@ TODO
         guix time-machine -C ~/channels.scm -- environment --ad-hoc python-radian r-minimal -- radian
       #+end_src
 
-      Then wait a while, if all goes well, then you should be in a
-      =radian= console.
+      Then wait for a while, if all goes well, then you should be in a
+      =radian= REPL.
 ** Demo: add a sample R package built from Github
 We also try to add a custom R package to our private channel, and also
-put the R package in a private repository, to illustrate creating
+put the R package in a /private/ repository, to illustrate creating
 internal package.
 
 1. Repository for R package
@@ -381,7 +382,7 @@ internal package.
    - The book has an example R package at
      [[https://github.com/jennybc/foofactors]] which is a good example
      because it depends on the [[https://rdrr.io/cran/forcats/man/forcats-package.html][forcats]] package, which is available as
-     =r-forcats=.
+     =r-forcats=, which is in the official Guix channel.
    - We could have used this repository directly if we want to test an
      R package at public repository.
    - Since we want to test an R at private repository, we will clone
@@ -398,9 +399,9 @@ internal package.
 
      2. Create a *private* empty repository at Github using the same
         steps as above in creating the private channel repository. I
-        will keep the same name for this respository,
+        will keep the same name for this repository,
         i.e. =foofactors=. So the URL of my repository is
-        [[git@github.com:peterloleungyau/foofactors.git][git@github.com:peterloleungyau/foofactors.git]]
+        =git@github.com:peterloleungyau/foofactors.git=
      3. Push the local cloned repository to the empty repository at
         Github:
         #+begin_src shell
@@ -413,13 +414,13 @@ internal package.
      4. Use =git log= to check the latest commit of the repository, to
         be used below. At the time of writing, the latest commit is
         =ef71e8d2e82fa80e0cfc249fd42f50c01924326d=
-     5. (Optional) You may check at Github that now the repository is
+     5. (Optional) You may check at Github that the repository is
         no longer empty.
 2. Package definition for the R package
    - Besides using =guix import= to import existing package (e.g. from
      CRAN), the easiest way to write a package definition is to modify
      from a similar package.
-   - In our case, we want to write a package definition for na R
+   - In our case, we want to write a package definition for an R
      package at Github.
    - It would be convenient to clone the official Guix repository
      (https://git.savannah.gnu.org/git/guix.git) to your local
@@ -489,14 +490,14 @@ internal package.
      - sha256: seems some kind of hash in base32 format
      - build-system: =r-build-system= as this is an R package
      - propagated-inputs: the dependencies, which will be installed
-       /visibly/ (i.e. as if the user also manually install the
+       /visibly/ (i.e. as if the user also manually installed the
        propagated input) together with this package
      - home-page: the homepage of the package
      - synopsis: a short description of the package
      - description: a longer description of the package
      - license: seems can specify one or more licenses as a list
    - We therefore need to figure out these information for =foofactors=
-   - The =foofactors/DESCRIPTION= provides a lot of useful
+   - The =foofactors/DESCRIPTION= file provides a lot of useful
      information, reproduced below for convenience:
      #+begin_src text
        Package: foofactors
@@ -520,16 +521,16 @@ internal package.
      #+end_src
      - name: following the convention we will use =r-foofactors=
      - version: 0.0.0.9000
-     - revision: can juse use 1
+     - revision: can just use 1
      - commit: determined above using =git log= to be =ef71e8d2e82fa80e0cfc249fd42f50c01924326d=
      - url: the URL of the private repository
-       [[git@github.com:peterloleungyau/foofactors.git][git@github.com:peterloleungyau/foofactors.git]]
+       =git@github.com:peterloleungyau/foofactors.git=
      - sha256: this is a hash of the source content
        - if the source is fetched with =url-fetch=, then we can use
          =guix download= command at the terminal to download and
          calculate the hash
-       - but since we now the source is fetched with =git-fetch=,
-         currently =guix download= does not support this
+       - but since now the source is fetched with =git-fetch=,
+         and currently =guix download= does not support this
        - instead, according to the [[https://guix.gnu.org/cookbook/en/html_node/Extended-example.html][Extended example]] of Guix packing,
          we can use =guix hash= on the *freshly* cloned repository as
          follows:
@@ -538,7 +539,7 @@ internal package.
            git clone git@github.com:peterloleungyau/foofactors.git
            # go to the repo
            cd foofactors
-           # checkout the lastest commit
+           # checkout the latest commit
            # alternatively, you can checkout a specific commit
            git checkout HEAD
            # finally calculate hash
@@ -547,10 +548,10 @@ internal package.
        - in our case, the calculated hash is =1hmfwac2zdl8x6r21yy5b257c4891106ana4j81hfn6rd0rl9f72=
      - build-system: =r-build-system= as this is an R package
      - propagated-inputs: this package imports =forcats=, so include
-       =r-focats= which is in Guix's official repository already
+       =r-forcats= which is in Guix's official repository already
      - home-page: can simply use the original Github repository
        https://github.com/jennybc/foofactors
-     - synopsis: a short description, maybe modify frmo the title "A R package to make factors less aggravating."
+     - synopsis: a short description, maybe modify from the title "A R package to make factors less aggravating."
      - description: just copy the description above.
      - license: MIT license, which is called [[https://www.gnu.org/licenses/license-list.html#Expat][expat]] in Guix, which is
        =license:expat= in =guix/licenses.scm=.
@@ -598,7 +599,7 @@ internal package.
              (license license:expat))))
      #+end_src
 
-     Note that we define a module corresponding the path of the file,
+     Note that we define a module corresponding to the path of the file,
      and we use some modules that seem to be needed, and also the
      =(gnu packages statistics)= module because the package depends on
      =r-forcats= which resides in =(gnu packages statistics)= by
@@ -607,13 +608,13 @@ internal package.
      
      But the above package definition has not been tested yet, and as
      we will see, it has problem that needs a workaround.
-   - Local testing before commit and push
-     - Before commiting and pushing the package definition, it is good
+   - Local testing before committing and pushing
+     - Before committing and pushing the package definition, it is good
        to first test building and using it locally, so that we can fix
        problem in the package definition.
-     - We may try to build it using =guix build=, with the =-L=
+     - We may try to build it using =guix build=. With the =-L=
        option, we can specify extra path containing modules to be
-       prepended to existing channels, so that we can test the
+       pre-pended to existing channels, so that we can test
        packages not yet committed to the channel.
        #+begin_src shell
          # use the previous channels file, so that its dependencies will be consistent.
@@ -621,16 +622,17 @@ internal package.
 
        #+end_src
 
-       But then this gave error that "ssh" is not found, so the
-       =git-fetch= is unable to fetch from private repository. Asking
-       in [[guix-devel@gnu.org][guix-devel@gnu.org]] confirms that currently =git-fetch= is
-       indeed unable to fetch private repository over ssh, and Luis
-       Felipe suggested a workaround of using =git-checkout= directly
-       instead of using =origin= and =git-fetch=:
+       But then this gave error that "ssh is not found", so
+       =git-fetch= is unable to fetch from the private repository. Asking
+       in the [[https://lists.gnu.org/mailman/listinfo/guix-devel][guix-devel@gnu.org]] mailing list confirms that currently
+       =git-fetch= is indeed unable to fetch private repository over
+       ssh, and Luis Felipe suggested a workaround of using
+       =git-checkout= directly instead of using =origin= and
+       =git-fetch=:
        - https://lists.gnu.org/archive/html/guix-devel/2021-07/msg00090.html
        - https://lists.gnu.org/archive/html/guix-devel/2021-07/msg00091.html
      - We therefore modify the package definition above to use
-       =git-checkout= and confirmed that it can be built successfully
+       =git-checkout= and confirm that it can be built successfully
        (assuming your SSH key and ssh-agent has been setup correctly):
        #+begin_src scheme
          (define-module (my-packages r-pkgs)
@@ -668,11 +670,11 @@ internal package.
 
        #+end_src
 
-       Note that we added =(guix git)= module for =git-checkout=. We
-       also changed =origin= to =git-checkout=, and the source hash is
-       now not needed. Since a commit of a git repository is already
-       some kind of hash, we can still be confident that the source is
-       not tempered with.
+       Note that we have added the =(guix git)= module for =git-checkout=. We
+       have also changed =origin= to =git-checkout=, and the source hash is
+       no longer needed. Since a commit of a git repository is already
+       some kind of hash, we can still be confident that the source has not been
+       tampered with.
      - Now that the package can be built, we also try it in a =guix
        environment= which can also accept the =-L= option for extra
        module path, together with R:
@@ -682,7 +684,7 @@ internal package.
 
        This should give an R REPL, then we may try the quick demo
        shown in the README of https://github.com/jennybc/foofactors
-   - After the local testing, can may update the private channel,
+   - After the local testing, we may update the private channel,
      commit and push:
      #+begin_src shell
        # get to the private repository directory
@@ -694,8 +696,8 @@ internal package.
        # also note the latest commit
        git log
      #+end_src
-3. Test the package from Guix
-   1. Update the channels for updated commit
+3. Test the package from Guix through the private channel
+   1. Update the channels file for updated commit
       
       With the updated private channel, we also update the channels
       file =~/channels.scm= for updated commit, which is
@@ -724,10 +726,66 @@ internal package.
       And we can try the same quick demo as above, and verify that we
       get the expected results.
 
-* Channel Authentication
+* (Optional) Channel Authentication
+The above setup of private channel and custom packages is sufficient
+for needs of teams for internal packages. You may choose to add
+channel authentication.
+References:
+- [[https://guix.gnu.org/manual/en/html_node/Creating-a-Channel.html#Creating-a-Channel][Creating a Channel]]
+- [[https://guix.gnu.org/manual/en/html_node/Channel-Authentication.html][Channel Authentication]]
+- [[https://guix.gnu.org/manual/en/html_node/Specifying-Channel-Authorizations.html][Specifying Channel Authorizations]]
 
-** GPG key
+Here we just briefly point to some relevant material.  There are a few
+things needed:
+1. Setup OpenPGP key for each committer
+   - e.g. refer to https://askubuntu.com/questions/100281/how-do-i-make-a-pgp-key
+   - e.g. refer to [[https://nsrc.org/workshops/2014/btnog/raw-attachment/wiki/Track3Agenda/2-1-1.pgp-lab.html][Installing and Using PGP]]
+2. Export the OpenPGP key of all committers, e.g. with =gpg --export=
+   - refer to [[https://nsrc.org/workshops/2014/btnog/raw-attachment/wiki/Track3Agenda/2-1-1.pgp-lab.html#exporting-your-public-key-with-gpg][Exporting your public key with GPG]]
+3. Introduce an initial =.guix-authorizations= which lists the keys
+   of each authorized developer. And the commit should be signed.
+   - refer to [[https://guix.gnu.org/manual/en/html_node/Commit-Access.html][Commit Access]] for signing git commits
+   - an example =.guix-authorizations= is:
+     #+begin_src scheme
+       ;; Example '.guix-authorizations' file.
 
-** Signing git commits
+       (authorizations
+        (version 0)               ;current file format version
+
+        (("AD17 A21E F8AE D8F1 CC02  DBD9 F8AE D8F1 765C 61E3"
+          (name "alice"))
+         ("2A39 3FFF 68F4 EF7A 3D29  12AF 68F4 EF7A 22FB B2D5"
+          (name "bob"))
+         ("CABB A931 C0FF EEC6 900D  0CFB 090B 1199 3D9A EBB5"
+          (name "charlie"))))
+     #+end_src
+4. Put all the OpenPGP keys that were ever mentioned in
+   =.guix-authorizations=, stored as (either binary or ASCII-armored)
+   =.key= files, put in the branch named =keyring=.
+5. Advertise the channel introduction, for instance in the README of
+   the channel. The channel introduction looks like this and contains
+   the key for the first commit of the channel:
+   #+begin_src scheme
+     (channel
+       (name 'some-channel)
+       (url "https://example.org/some-channel.git")
+       (introduction
+        (make-channel-introduction
+         "6f0d8cc0d88abb59c324b2990bfee2876016bb86"
+         (openpgp-fingerprint
+          "CABB A931 C0FF EEC6 900D  0CFB 090B 1199 3D9A EBB5"))))
+   #+end_src
+
+You may look at these examples of third party channels to see the
+parts mentioned above:
+- https://gitlab.com/nonguix/nonguix
+- https://github.com/guix-science/guix-science.git
 
 * Summary
+We have demonstrated setting up a private channel as a private GitHub
+repository, for internal R packages, where the package source can be
+in private GitHub repository. This setup is sufficient for using Guix
+for per-project dependency management in the presence of internal
+packages, by maintaining a channels file and a manifest file for each
+project. We also briefly point out the steps needed to authenticate
+the private channel, though this is optional.
